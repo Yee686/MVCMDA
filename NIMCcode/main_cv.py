@@ -1,7 +1,7 @@
 from torch import nn, optim
-from model_SAGE import Model
+# from model_SAGE import Model
 # from model_gcn import Model
-# from model_gat import Model
+from model_gat import Model
 from prepareData import prepare_data
 import numpy as np
 import torch
@@ -14,10 +14,10 @@ today = datetime.date.today().strftime("%Y%m%d")[2:]
 class Config(object):
     def __init__(self):
         self.data_path = '/mnt/yzy/NIMCGCN/datasets/data(MDA108)'
-        self.validation = 10
+        self.validation = 1
         #self.save_path = '../data'
         self.save_path = ' '
-        self.epoch = 250
+        self.epoch = 1
         self.alpha = 0.2
 
 class Sizes(object):
@@ -48,6 +48,7 @@ def train(model, label, train_data, optimizer, opt, k):
     zero_index = np.array(np.where(train_data["md_p"].clone().cpu()==0)).T.tolist()
     
     for epoch in range(1, opt.epoch+1):
+        torch.cuda.empty_cache()
         model.zero_grad()
         score = model(train_data)
 
@@ -70,7 +71,7 @@ def train(model, label, train_data, optimizer, opt, k):
 
 opt = Config()
 aucs = []
-scores = np.zeros((1043,2166,10))
+scores = np.zeros((1043,2166,opt.validation))
 
 if __name__ == "__main__":
     torch.cuda.set_device(1)
@@ -91,6 +92,7 @@ if __name__ == "__main__":
         dataset["md_p"][tuple(np.array(dataset["fold_index"][i]).T)] = 0
        
         model = Model(sizes)
+        model = nn.parallel.DataParallel(model,device_ids=[0,1])
         print(model)
         model.cuda()
         optimizer = optim.Adam(model.parameters(), lr=0.001)
@@ -100,10 +102,11 @@ if __name__ == "__main__":
     
     print("Avarage Auc:",sum(aucs)/opt.validation)
 
-    scores = scores.mean(axis=2)
-    np.save("/mnt/yzy/NIMCGCN/Prediction/Mimc/{}_{}foldCV_{}_elem".format(model.name, opt.validation, today), scores)
-
-    scores = scores.reshape(-1).tolist()
-    fpr,tpr,_ = metric.roc_curve(label,scores)
-    auc = metric.auc(fpr,tpr)
-    print("Total Auc:",auc)
+    with torch.no_grad():
+        scores = scores.mean(axis=2)
+        # np.save("/mnt/yzy/NIMCGCN/Prediction/Nimc/{}_{}foldCV_{}_elem".format(model.name, opt.validation, today), scores)
+        
+        scores = scores.reshape(-1).tolist()
+        fpr,tpr,_ = metric.roc_curve(label,scores)
+        auc = metric.auc(fpr,tpr)
+        print("Total Auc:",auc)
