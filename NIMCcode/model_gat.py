@@ -7,17 +7,19 @@ class Model(nn.Module):
     def __init__(self, sizes):
         super(Model, self).__init__()
 
+        self.name = 'GAT'
+
         self.fg = sizes.fg
         self.fd = sizes.fd
         self.k = sizes.k
         self.m = sizes.m
         self.d = sizes.d
 
-        self.gcn_x1 = conv.GCNConv(self.fg, self.fg*2)
-        self.gcn_x2 = conv.GCNConv(self.fg*2, self.fg*4)
+        self.gat_x1 = conv.GATConv(self.fg, self.fg*2, heads = 10)
+        self.gat_x2 = conv.GATConv(self.fg*2, self.fg, heads = 10)
         
-        self.gcn_y1 = conv.GCNConv(self.fd, self.fd*2)
-        self.gcn_y2 = conv.GCNConv(self.fd*2, self.fd*4)
+        self.gat_y1 = conv.GATConv(self.fd, self.fd*2, heads = 10)
+        self.gat_y2 = conv.GATConv(self.fd*2, self.fd, heads = 10)
 
         self.linear_x_1 = nn.Linear(self.fg*4, 256)
         self.linear_x_2 = nn.Linear(256, 128)
@@ -39,12 +41,16 @@ class Model(nn.Module):
         '''
         
         # x_m   miRNA-miRNA-edge    miRNA-miRNA-matrix-value
-        X1 = t.relu(self.gcn_x1(x_m.cuda(), input[1]['edge_index'].cuda(), input[1]['data'][input[1]['edge_index'][0], input[1]['edge_index'][1]].cuda()))
-        X  = t.relu(self.gcn_x2(X1, input[1]['edge_index'].cuda(), input[1]['data'][input[1]['edge_index'][0], input[1]['edge_index'][1]].cuda()))
+        edge_index = input['mm']['edge_index'].cuda()
+        edge_attr = input['mm']['data'][input['mm']['edge_index'][0],input['mm']['edge_index'][1]].cuda()
+        X1 = t.relu(self.gat_x1(x_m.cuda(), edge_index, edge_attr))
+        X  = t.relu(self.gat_x2(X1, edge_index, edge_attr))
 
         # x_d   drug-drug-edge      drug-drug-matrix-value
-        Y1 = t.relu(self.gcn_y1(x_d.cuda(), input[0]['edge_index'].cuda(), input[0]['data'][input[0]['edge_index'][0], input[0]['edge_index'][1]].cuda()))
-        Y  = t.relu(self.gcn_y2(Y1, input[0]['edge_index'].cuda(), input[0]['data'][input[0]['edge_index'][0], input[0]['edge_index'][1]].cuda()))
+        edge_index = input['dd']['edge_index'].cuda()
+        edge_attr = input['dd']['data'][input['dd']['edge_index'][0],input['dd']['edge_index'][1]].cuda()
+        Y1 = t.relu(self.gat_y1(x_d.cuda(), edge_index, edge_attr ))
+        Y  = t.relu(self.gat_y2(Y1, edge_index, edge_attr ))
     
 
         x1 = t.relu(self.linear_x_1(X))

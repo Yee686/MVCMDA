@@ -91,4 +91,4 @@ class Opt():
 if __name__ == "__main__":
     opt = Opt()
     dataset = prepare_data(opt)
-    t.save(dataset,"NIMCcode/dataset.pt")
+    # t.save(dataset,"NIMCcode/dataset.pt")
