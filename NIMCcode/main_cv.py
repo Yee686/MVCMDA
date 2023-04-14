@@ -1,6 +1,6 @@
 from torch import nn, optim
-# from model_SAGE import Model
-from model_gcn import Model
+from model_SAGE import Model
+# from model_gcn import Model
 # from model_gat import Model
 from prepareData import prepare_data
 import numpy as np
@@ -101,7 +101,7 @@ if __name__ == "__main__":
     print("Avarage Auc:",sum(aucs)/opt.validation)
 
     scores = scores.mean(axis=2)
-    np.save("/mnt/yzy/NIMCGCN/Prediction/embedding/{}_{}foldCV_{}_elem".format(model.name, opt.validation, today), scores)
+    np.save("/mnt/yzy/NIMCGCN/Prediction/Mimc/{}_{}foldCV_{}_elem".format(model.name, opt.validation, today), scores)
 
     scores = scores.reshape(-1).tolist()
     fpr,tpr,_ = metric.roc_curve(label,scores)
