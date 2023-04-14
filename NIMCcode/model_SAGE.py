@@ -33,12 +33,13 @@ class Model(nn.Module):
         x_m = t.randn(self.m, self.fg)
         x_d = t.randn(self.d, self.fd)
 
-        
-        X1 = t.relu(self.sage_x1(x_m.cuda(), input['mm']['edge_index'].cuda()))
-        X  = t.relu(self.sage_x2(X1, input['mm']['edge_index'].cuda()))
+        edge_index = input['mm']['edge_index'].cuda()
+        X1 = t.relu(self.sage_x1(x_m.cuda(), edge_index))
+        X  = t.relu(self.sage_x2(X1, edge_index))
 
-        Y1 = t.relu(self.sage_y1(x_d.cuda(), input['dd']['edge_index'].cuda()))
-        Y  = t.relu(self.sage_y2(Y1, input['dd']['edge_index'].cuda())) 
+        edge_index = input['dd']['edge_index'].cuda()
+        Y1 = t.relu(self.sage_y1(x_d.cuda(), edge_index))
+        Y  = t.relu(self.sage_y2(Y1, edge_index)) 
 
         x1 = t.relu(self.linear_x_1(X))
         x2 = t.relu(self.linear_x_2(x1))
