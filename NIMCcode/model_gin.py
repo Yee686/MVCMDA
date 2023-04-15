@@ -23,7 +23,7 @@ class Model(nn.Module):
         self.gin_y1 = conv.GINConv(nn.Sequential(nn.Linear(self.fg, self.fg*2),nn.Linear(self.fg*2, self.fg*4)),train_eps=True)
         self.dropout_y1 = nn.Dropout(0.2)
         self.gin_y2 = conv.GINConv(nn.Sequential(nn.Linear(self.fg*4, self.fg*2),nn.Linear(self.fg*2, self.fg)),train_eps=True)
-        self.dropout_y1 = nn.Dropout(0.2)
+        self.dropout_y2 = nn.Dropout(0.2)
 
 
         self.linear_x_1 = nn.Linear(self.fg, 256)
@@ -43,7 +43,7 @@ class Model(nn.Module):
         edge_index = input['mm']['edge_index'].cuda()
         # edge_attr = input['mm']['data'][input['mm']['edge_index'][0],input['mm']['edge_index'][1]].cuda()
         X1 = t.relu(self.gin_x1(x_m, edge_index))
-        x1 = self.dropout_x2(X1)
+        x1 = self.dropout_x1(X1)
         X  = t.relu(self.gin_x2(X1, edge_index))
         X  = self.dropout_x2(X)
 
@@ -53,7 +53,7 @@ class Model(nn.Module):
         Y1 = t.relu(self.gin_y1(x_d, edge_index ))
         Y1 = self.dropout_y1(Y1)
         Y  = t.relu(self.gin_y2(Y1, edge_index ))
-        Y  = self.dropout_y1(Y)
+        Y  = self.dropout_y2(Y)
 
         x1 = t.relu(self.linear_x_1(X))
         x2 = t.relu(self.linear_x_2(x1))

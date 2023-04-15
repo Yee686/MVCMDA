@@ -1,7 +1,8 @@
 from torch import nn, optim
-# from model_SAGE import Model
+from model_SAGE import Model
 # from model_gcn import Model
-from model_gat import Model
+# from model_gat import Model
+# from model_gin import Model
 from prepareData import prepare_data
 import numpy as np
 import torch
@@ -14,11 +15,13 @@ today = datetime.date.today().strftime("%Y%m%d")[2:]
 class Config(object):
     def __init__(self):
         self.data_path = '/mnt/yzy/NIMCGCN/datasets/data(MDA108)'
-        self.validation = 1
+        self.validation = 10
         #self.save_path = '../data'
         self.save_path = ' '
-        self.epoch = 1
-        self.alpha = 0.2
+        self.lr = 0.0005
+        self.weight_decay = 0.0001
+        self.epoch = 250
+        self.alpha = 0.2  
 
 class Sizes(object):
     def __init__(self, dataset):
@@ -90,12 +93,13 @@ if __name__ == "__main__":
         dataset["md_p"] = dataset["md_true"].clone()
         #抹去验证集的标签
         dataset["md_p"][tuple(np.array(dataset["fold_index"][i]).T)] = 0
-       
+
         model = Model(sizes)
-        model = nn.parallel.DataParallel(model,device_ids=[0,1])
+        # model = nn.parallel.DataParallel(model,device_ids=[0,1])
         print(model)
         model.cuda()
-        optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+        optimizer = optim.Adam(model.parameters(), lr = opt.lr, weight_decay = opt.weight_decay)
         
         auc = train(model, label, dataset, optimizer, opt, i)
         print("auc {} - {}".format(i+1, auc))
@@ -104,8 +108,8 @@ if __name__ == "__main__":
 
     with torch.no_grad():
         scores = scores.mean(axis=2)
-        # np.save("/mnt/yzy/NIMCGCN/Prediction/Nimc/{}_{}foldCV_{}_elem".format(model.name, opt.validation, today), scores)
-        
+        np.save("/mnt/yzy/NIMCGCN/Prediction/Nimc/{}_{}FoldCV_{}_[lr]{}_[wd]{}_[ep]{}_[cvmhod]elem" \
+                .format(model.name, opt.validation, today, opt.lr, opt.weight_decay, opt.epoch), scores)
         scores = scores.reshape(-1).tolist()
         fpr,tpr,_ = metric.roc_curve(label,scores)
         auc = metric.auc(fpr,tpr)
