@@ -17,26 +17,26 @@ class Model(nn.Module):
 
         self.gat_x1 = conv.GATConv(self.fg, self.fg, heads = 2, add_self_loops = False)
         self.dropout_x1 = nn.Dropout(0.2)
-        self.gat_x2 = conv.GATConv(self.fg*2, self.fg, heads = 1, add_self_loops = False)
+        self.gat_x2 = conv.GATConv(self.fg*2, self.fg, heads = 2, add_self_loops = False)
         self.dropout_x2 = nn.Dropout(0.2)
         
         self.gat_y1 = conv.GATConv(self.fd, self.fd, heads = 2, add_self_loops = False)
         self.dropout_y1 = nn.Dropout(0.2)
-        self.gat_y2 = conv.GATConv(self.fd*2, self.fd, heads = 1, add_self_loops = False)
+        self.gat_y2 = conv.GATConv(self.fd*2, self.fd, heads = 2, add_self_loops = False)
         self.dropout_y2 = nn.Dropout(0.2)
 
-        self.linear_x_1 = nn.Linear(self.fg, 256)
+        self.linear_x_1 = nn.Linear(self.fg*2, 256)
         self.linear_x_2 = nn.Linear(256, 128)
         self.linear_x_3 = nn.Linear(128, self.k)
 
-        self.linear_y_1 = nn.Linear(self.fd, 256)
+        self.linear_y_1 = nn.Linear(self.fd*2, 256)
         self.linear_y_2 = nn.Linear(256, 128)
         self.linear_y_3 = nn.Linear(128, self.k)
 
     def forward(self, input):
         t.manual_seed(1)
-        x_m = t.randn(self.m, self.fg).cuda()
-        x_d = t.randn(self.d, self.fd).cuda()
+        x_m = t.randn(self.m, self.fg).cuda(0)
+        x_d = t.randn(self.d, self.fd).cuda(1)
 
         '''
         elf.data_set['dd'],             self.data_set['mm'],
@@ -45,7 +45,8 @@ class Model(nn.Module):
         '''
         
         # x_m   miRNA-miRNA-edge    miRNA-miRNA-matrix-value
-        edge_index_x = input['mm']['edge_index'].cuda()
+        edge_index_x = input['mm']['edge_index']
+        print(edge_index_x.device)
         # edge_attr = input['mm']['data'][input['mm']['edge_index'][0],input['mm']['edge_index'][1]].cuda()
         # edge_attr = edge_attr.unsqueeze(dim = 1)
         # print(edge_index.shape,edge_attr.shape)
@@ -56,7 +57,7 @@ class Model(nn.Module):
         X  = self.dropout_x2(X)
 
         # x_d   drug-drug-edge      drug-drug-matrix-value
-        edge_index_y = input['dd']['edge_index'].cuda()
+        edge_index_y = input['dd']['edge_index']
         # edge_attr = input['dd']['data'][input['dd']['edge_index'][0],input['dd']['edge_index'][1]].cuda()
         # edge_attr = edge_attr.unsqueeze(dim = 1)
         # print(x_d.device, edge_index_y.device)
