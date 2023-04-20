@@ -14,6 +14,7 @@ from tqdm import tqdm
 
 today = datetime.date.today().strftime("%Y%m%d")[2:]
 Models = [Model_SAGE, Model_GCN, Model_GAT, Model_GIN, Model_ATTENGCN]
+# Models = [Model_GCN, Model_GAT, Model_GIN, Model_ATTENGCN]
 
 class Config(object):
     def __init__(self):
@@ -34,9 +35,9 @@ class Sizes(object):
         # self.fg = 64                # x(miRNA) feature dimension
         # self.fd = 64                # y(Drug) feature dimension
         # self.k = 32                 # out feature channels
-        self.fg = 128               # x(miRNA) feature dimension
-        self.fd = 128               # y(Drug) feature dimension
-        self.k = 48                 # out feature channels
+        self.fg = 96                # x(miRNA) feature dimension
+        self.fd = 96                # y(Drug) feature dimension
+        self.k = 64                 # out feature channels
         self.gcn_layers = 2         # gcn layers
         self.view = 1               # view number
 
@@ -72,8 +73,8 @@ def train(model, label, train_data, optimizer, opt, k):
         losss.backward()
         optimizer.step()
 
-        tqdm.write("epoch {}'s loss = {}".format(
-            epoch, losss.item()/(len(one_index[0])+len(zero_index[0]))))
+        # tqdm.write("epoch {}'s loss = {}".format(
+        #     epoch, losss.item()/(len(one_index[0])+len(zero_index[0]))))
     # 计算AUC
     score = score.detach().cpu().numpy()
     scores[:, :, k] = score
@@ -91,10 +92,7 @@ opt = Config()
 sizes = Sizes(dataset)
 
 if __name__ == "__main__":
-    torch.cuda.set_device(0)
-    torch.cuda.empty_cache()
-
-    # dataset = prepare_data(opt)
+    torch.cuda.set_device(1)
     label = dataset["md_true"].clone().cpu().numpy().reshape(-1).tolist()
     print(sum(label))
 
@@ -102,17 +100,14 @@ if __name__ == "__main__":
 
         aucs = []
         scores = np.zeros((1043, 2166, opt.validation))
-        
-        for i in range(opt.validation):
-            print('-'*50)
+        print(str(Model))
+        torch.cuda.empty_cache()
 
+        for i in range(opt.validation):
             dataset["md_p"] = dataset["md_true"].clone()
-            # 抹去验证集的标签
             dataset["md_p"][tuple(np.array(dataset["fold_index"][i]).T)] = 0
 
             model = Model(sizes)
-            # model = nn.parallel.DataParallel(model,device_ids=[0,1])
-            print(model)
             model.cuda()
 
             optimizer = optim.Adam(model.parameters(), lr=opt.lr,
@@ -125,8 +120,8 @@ if __name__ == "__main__":
 
         with torch.no_grad():
             scores = scores.mean(axis=2)
-            np.save("/mnt/yzy/NIMCGCN/Prediction/Nimc/{}_{}FoldCV_{}_[lr]{}_[wd]{}_[ep]{}_[cvMthd]elem_[miRDim]{}_[drugDim]{}_[kFdim]{}.npy"
-                    .format(model.name, opt.validation, today, opt.lr, opt.weight_decay, opt.epoch, sizes.m, sizes.d, sizes.k), scores)
+            np.save("/mnt/yzy/NIMCGCN/Prediction/Compare/{}_{}FoldCV_{}_[lr]{}_[wd]{}_[ep]{}_[cvMthd]elem_[miRDim]{}_[drugDim]{}_[kFdim]{}.npy"
+                    .format(model.name, opt.validation, today, opt.lr, opt.weight_decay, opt.epoch, sizes.fg, sizes.fd, sizes.k), scores)
             scores = scores.reshape(-1).tolist()
             fpr, tpr, _ = metric.roc_curve(label, scores)
             auc = metric.auc(fpr, tpr)
