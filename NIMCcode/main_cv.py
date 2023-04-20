@@ -1,8 +1,9 @@
 from torch import nn, optim
-from model_SAGE import Model
+# from model_SAGE import Model
 # from model_gcn import Model
 # from model_gat import Model
 # from model_gin import Model
+from model_attengcn import Model
 from prepareData import prepare_data
 import numpy as np
 import torch
@@ -13,24 +14,32 @@ from tqdm import tqdm
 
 today = datetime.date.today().strftime("%Y%m%d")[2:]
 
+
 class Config(object):
     def __init__(self):
         self.data_path = '/mnt/yzy/NIMCGCN/datasets/data(MDA108)'
         self.validation = 10
-        #self.save_path = '../data'
         self.save_path = ' '
-        self.lr = 0.0001
-        self.weight_decay = 0
-        self.epoch = 250
-        self.alpha = 0.2  
+
+        self.lr = 0.0001            # learning rate
+        self.weight_decay = 0       # weight decay
+        self.epoch = 250            # epoch
+        self.alpha = 0.2            # alpha for loss function
+
 
 class Sizes(object):
     def __init__(self, dataset):
-        self.m = 1043
-        self.d = 2166
-        self.fg = 64
-        self.fd = 64
-        self.k = 32
+        self.m = 1043               # miRNA number
+        self.d = 2166               # drug number
+        self.fg = 64                # x(miRNA) feature dimension
+        self.fd = 64                # y(Drug) feature dimension
+        self.k = 32                 # out feature channels
+        self.gcn_layers = 2         # gcn layers
+        # self.k = 48                # out feature channels
+        # self.fg = 128              # x(miRNA) feature dimension
+        # self.fd = 128              # y(Drug) feature dimension
+        self.view = 1               # view number
+
 
 class Myloss(nn.Module):
     def __init__(self):
@@ -42,15 +51,18 @@ class Myloss(nn.Module):
 
         return (1-opt.alpha)*loss_sum[one_index].sum()+opt.alpha*loss_sum[zero_index].sum()
 
+
 def train(model, label, train_data, optimizer, opt, k):
     model.train()
-    
+
     # regression_crit = Myloss()
     loss = torch.nn.MSELoss(reduction='mean')
-    
-    one_index = np.array(np.where(train_data["md_p"].clone().cpu()==1)).T.tolist()
-    zero_index = np.array(np.where(train_data["md_p"].clone().cpu()==0)).T.tolist()
-    
+
+    one_index = np.array(
+        np.where(train_data["md_p"].clone().cpu() == 1)).T.tolist()
+    zero_index = np.array(
+        np.where(train_data["md_p"].clone().cpu() == 0)).T.tolist()
+
     for epoch in tqdm(range(1, opt.epoch+1)):
         torch.cuda.empty_cache()
         model.zero_grad()
@@ -60,31 +72,33 @@ def train(model, label, train_data, optimizer, opt, k):
         losss.backward()
         optimizer.step()
 
-        tqdm.write("loss ={}".format(losss.item()/(len(one_index[0])+len(zero_index[0]))))
+        tqdm.write("loss ={}".format(
+            losss.item()/(len(one_index[0])+len(zero_index[0]))))
     # 计算AUC
     score = score.detach().cpu().numpy()
-    scores[:,:,k] = score
-    
+    scores[:, :, k] = score
+
     score = score.reshape(-1).tolist()
-    fpr,tpr,_ = metric.roc_curve(label,score)
-    auc = metric.auc(fpr,tpr)
+    fpr, tpr, _ = metric.roc_curve(label, score)
+    auc = metric.auc(fpr, tpr)
     aucs.append(auc)
 
     return auc
 
-
 opt = Config()
 aucs = []
-scores = np.zeros((1043,2166,opt.validation))
+scores = np.zeros((1043, 2166, opt.validation))
 
 if __name__ == "__main__":
     torch.cuda.set_device(1)
     torch.cuda.empty_cache()
 
+    
+
     # dataset = prepare_data(opt)
     dataset = torch.load("/mnt/yzy/NIMCGCN/NIMCcode/dataset.pt")
 
-    sizes = Sizes(dataset)          # sizes为模型相关超参 
+    sizes = Sizes(dataset)          # sizes为模型相关超参
     label = dataset["md_true"].clone().cpu().numpy().reshape(-1).tolist()
     print(sum(label))
 
@@ -92,7 +106,7 @@ if __name__ == "__main__":
         print('-'*50)
 
         dataset["md_p"] = dataset["md_true"].clone()
-        #抹去验证集的标签
+        # 抹去验证集的标签
         dataset["md_p"][tuple(np.array(dataset["fold_index"][i]).T)] = 0
 
         model = Model(sizes)
@@ -100,18 +114,19 @@ if __name__ == "__main__":
         print(model)
         model.cuda()
 
-        optimizer = optim.Adam(model.parameters(), lr = opt.lr, weight_decay = opt.weight_decay)
-        
+        optimizer = optim.Adam(model.parameters(), lr=opt.lr,
+                               weight_decay=opt.weight_decay)
+
         auc = train(model, label, dataset, optimizer, opt, i)
         print("auc {} - {}".format(i+1, auc))
-    
-    print("Avarage Auc:",sum(aucs)/opt.validation)
+
+    print("Avarage Auc:", sum(aucs)/opt.validation)
 
     with torch.no_grad():
         scores = scores.mean(axis=2)
-        np.save("/mnt/yzy/NIMCGCN/Prediction/Nimc/{}_{}FoldCV_{}_[lr]{}_[wd]{}_[ep]{}_[cvmhod]elem" \
+        np.save("/mnt/yzy/NIMCGCN/Prediction/Nimc/{}_{}FoldCV_{}_[lr]{}_[wd]{}_[ep]{}_[cvmhod]elem"
                 .format(model.name, opt.validation, today, opt.lr, opt.weight_decay, opt.epoch), scores)
         scores = scores.reshape(-1).tolist()
-        fpr,tpr,_ = metric.roc_curve(label,scores)
-        auc = metric.auc(fpr,tpr)
-        print("Total Auc:",auc)
+        fpr, tpr, _ = metric.roc_curve(label, scores)
+        auc = metric.auc(fpr, tpr)
+        print("Total Auc:", auc)
