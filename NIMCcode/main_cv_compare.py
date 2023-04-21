@@ -13,19 +13,19 @@ import datetime
 from tqdm import tqdm
 
 today = datetime.date.today().strftime("%Y%m%d")[2:]
-# Models = [Model_SAGE, Model_GCN, Model_GAT, Model_GIN, Model_ATTENGCN]
-Models = [Model_GIN, Model_ATTENGCN]
+Models = [Model_SAGE, Model_GCN, Model_GAT, Model_GIN, Model_ATTENGCN]
+# Models = [Model_GIN, Model_ATTENGCN]
 
 class Config(object):
     def __init__(self):
         self.data_path = '/mnt/yzy/NIMCGCN/datasets/data(MDA108)'
         self.validation = 10
-        self.save_path = ' '
+        self.save_path = '/mnt/yzy/NIMCGCN/Prediction'
 
         self.lr = 0.0001            # learning rate
         self.weight_decay = 0       # weight decay
         self.epoch = 250            # epoch
-        self.alpha = 0.2            # alpha for loss function
+        self.alpha = 0.2            # alpha for zero target in loss function
 
 
 class Sizes(object):
@@ -35,8 +35,8 @@ class Sizes(object):
         # self.fg = 64                # x(miRNA) feature dimension
         # self.fd = 64                # y(Drug) feature dimension
         # self.k = 32                 # out feature channels
-        self.fg = 96                # x(miRNA) feature dimension
-        self.fd = 96                # y(Drug) feature dimension
+        self.fg = 64                  # x(miRNA) feature dimension
+        self.fd = 64                  # y(Drug) feature dimension
         self.k = 64                 # out feature channels
         self.gcn_layers = 2         # gcn layers
         self.view = 1               # view number
@@ -46,30 +46,35 @@ class Myloss(nn.Module):
     def __init__(self):
         super(Myloss, self).__init__()
 
-    def forward(self, one_index, zero_index, target, input):
+    def forward(self, target, input, one_index, zero_index,):
+
         loss = nn.MSELoss(reduction='none')
         loss_sum = loss(input, target)
 
-        return (1-opt.alpha)*loss_sum[one_index].sum()+opt.alpha*loss_sum[zero_index].sum()
+        return (1-opt.alpha)*loss_sum[one_index].sum() + opt.alpha*loss_sum[zero_index].sum()
 
 
 def train(model, label, train_data, optimizer, opt, k):
+
     model.train()
 
-    # regression_crit = Myloss()
-    loss = torch.nn.MSELoss(reduction='mean')
+    loss= Myloss()
 
-    one_index = np.array(
-        np.where(train_data["md_p"].clone().cpu() == 1)).T.tolist()
-    zero_index = np.array(
-        np.where(train_data["md_p"].clone().cpu() == 0)).T.tolist()
+    x,y = torch.where(train_data["md_p"] == 1)
+    one_index = torch.stack((x,y),dim=0).cuda()
+    one_index = one_index[0], one_index[1]
+
+    x,y = torch.where(train_data["md_p"] == 0)
+    zero_index = torch.stack((x,y),dim=0).cuda()
+    zero_index = zero_index[0], zero_index[1]
     
     for epoch in tqdm(range(1, opt.epoch+1)):
         torch.cuda.empty_cache()
         model.zero_grad()
-        score = model(train_data)
 
-        losss = loss(score, train_data['md_p'].cuda())
+        score = model(train_data)
+        losss = loss(score, train_data['md_p'].cuda(), one_index, zero_index)
+
         losss.backward()
         optimizer.step()
 
@@ -92,7 +97,7 @@ opt = Config()
 sizes = Sizes(dataset)
 
 if __name__ == "__main__":
-    torch.cuda.set_device(1)
+    torch.cuda.set_device(0)
     label = dataset["md_true"].clone().cpu().numpy().reshape(-1).tolist()
     print(sum(label))
 
@@ -120,8 +125,10 @@ if __name__ == "__main__":
 
         with torch.no_grad():
             scores = scores.mean(axis=2)
-            np.save("/mnt/yzy/NIMCGCN/Prediction/Compare/{}_{}FoldCV_{}_[lr]{}_[wd]{}_[ep]{}_[cvMthd]elem_[miRDim]{}_[drugDim]{}_[kFdim]{}.npy"
-                    .format(model.name, opt.validation, today, opt.lr, opt.weight_decay, opt.epoch, sizes.fg, sizes.fd, sizes.k), scores)
+            np.save("{0}/{1}_{2}FoldCV_{3}_[lr]{4}_[wd]{5}_[ep]{6}_[cvMthd]elem_ \
+                    [miRDim]{7}_[drugDim]{8}_[kFdim]{9}_[alpha]{10}.npy"
+                    .format(opt.save_path, model.name, opt.validation, today, opt.lr, opt.weight_decay, 
+                            opt.epoch, sizes.fg, sizes.fd, sizes.k, opt.alpha), scores)
             scores = scores.reshape(-1).tolist()
             fpr, tpr, _ = metric.roc_curve(label, scores)
             auc = metric.auc(fpr, tpr)

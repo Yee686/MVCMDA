@@ -61,6 +61,8 @@ class Model(nn.Module):
          # x_m: miRNA-miRNA-feature    miRNA-miRNA-edge: miRNA-miRNA-sim-network
         edge_index = input['mm']['edge_index'].cuda()
         edge_attr = input['mm']['data'][input['mm']['edge_index'][0],input['mm']['edge_index'][1]].cuda()
+        # print(edge_index.shape)
+        # print(edge_attr.shape)
         X1 = t.relu(self.gcn_x1(x_m, edge_index, edge_attr))
         X1 = self.norm_x1(X1)
         x1 = self.dropout_x1(X1)
