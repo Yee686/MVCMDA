@@ -2,6 +2,7 @@
 # ```DELMDA``` 基于图深度学习的MiRNA-Drug关联预测研究
 ## Author: Yi ZhengYe
 ## Data: 2023-03 ~ 2023-05
+## Modified: 2023-04-22
 
 ### Requirement
 
@@ -17,6 +18,28 @@
 - tensorflow                2.2.0
 - networkx                  2.8
 - [GraphEmbedding](https://github.com/shenweichen/GraphEmbedding)
+
+### File structure
+
+- ./datasets/ :oringinal data
+- ./Prediction/ :raw prediction data
+  - ./Prediction/Compare/ :compare among GNNs
+  - ./Prediction/Nimc/ :others
+- ./NIMCcode/ :code of GNNs model and training
+  - ./NIMCcode/main_cv_compare.py :code of cv all GNNs model
+  - ./NIMCcode/main_cv.py : code of cv single GNNs model
+  - ./NIMCcode/main_parallel_cv.py : code of cv in multi GPUs
+  - ./NIMCcode/model_gat.py : code of GAT model
+  - ./NIMCcode/model_gcn.py : code of GCN model
+  - ./NIMCcode/model_gin.py : code of GiN model
+  - ./NIMCcode/model_SAGE.py : code of GraphSAGE model
+  - ./NIMCcode/model_attengcn.py : code of attention GCN model
+- ./embedding_cv_element.ipynb :code of struc learning, element-wise 
+- ./embedding_cv_row_col.ipynb :code of struc learning, row-col-wise
+- ./embedding.ipynb :code of struc learning demo
+- ./new_dataset.pt  :preprocessed data(2023.4.22)
+- ./datacheck.ipynb :check dataset
+- ./metric.ipynb :visualization of metric & result
 
 ### Device
 
