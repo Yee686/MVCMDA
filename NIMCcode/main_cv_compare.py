@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 today = datetime.date.today().strftime("%Y%m%d")[2:]
 # Models = [Model_SAGE, Model_GCN, Model_GAT, Model_GIN, Model_ATTENGCN]
-Models = [Model_SAGE]
+Models = [Model_GCN]
 
 class Config(object):
     def __init__(self):
