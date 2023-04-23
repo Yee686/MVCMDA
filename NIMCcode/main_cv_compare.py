@@ -26,7 +26,7 @@ class Config(object):
         self.weight_decay = 0       # weight decay
         self.epoch = 150            # epoch
         self.alpha = 0.2            # alpha for zero target in loss function
-        self.beta = 0.2             # beta for one target in loss function
+        self.beta = 0.5             # beta for one target in loss function
         self.loss = 'WMSE'          # loss function 'WMSE' or 'CONTRASTIVE'
         # self.loss = 'CONTRASTIVE'   # loss function
 
