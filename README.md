@@ -4,6 +4,11 @@
 ## Data: 2023-03 ~ 2023-05
 ## Modified: 2023-04-22
 
+### TODO
+[] multi-view
+[] neural architechure search
+[] constractive learning
+
 ### Requirement
 
 - python                    3.8.10
@@ -21,6 +26,7 @@
 - [GraphEmbedding](https://github.com/shenweichen/GraphEmbedding)
 - [Mol2vec](https://github.com/samoturk/mol2vec)
 - gensim                    4.1.2
+- biopython                 1.79
 
 ### File structure
 ```
