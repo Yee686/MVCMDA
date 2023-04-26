@@ -26,10 +26,10 @@ class Config(object):
         self.validation = 10
         self.save_path = '/mnt/yzy/NIMCGCN/Prediction/Compare'
 
-        self.lr = 0.001             # learning rate
-        self.weight_decay = 0       # weight decay
-        self.epoch = 100            # epoch
-        self.alpha = 0.2            # alpha for zero target in loss function
+        self.lr = 0.0005             # learning rate
+        self.weight_decay = 0.001   # weight decay
+        self.epoch = 250            # epoch
+        self.alpha = 0.1            # alpha for zero target in loss function
         self.beta = 0.5             # beta for one target in loss function
         self.loss = 'WMSE'          # loss function 'WMSE' or 'CONTRASTIVE'
         # self.loss = 'CONTRASTIVE'   # loss function
@@ -42,9 +42,9 @@ class Sizes(object):
         # self.fg = 64                # x(miRNA) feature dimension
         # self.fd = 64                # y(Drug) feature dimension
         # self.k = 32                 # out feature channels
-        self.embedding_dim = 48     # feature dimension
-        self.hidden_channels = 48      # hidden feature channels
-        self.out_channels = 48         # out feature channels
+        self.embedding_dim = 64     # feature dimension
+        self.hidden_channels = 64      # hidden feature channels
+        self.out_channels = 64         # out feature channels
         self.gcn_layers = 2           # gcn layers
         self.encoder_type = 'SAGE'    # view number
 
