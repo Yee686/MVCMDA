@@ -11,14 +11,15 @@
 
 ### Requirement
 
-- python                    3.8.10
-- torch-geometric           1.7.0
-- torch-sparse              0.6.9
-- torch-cluster             1.5.9
-- torch-scatter             2.0.6
-- pytorch                   1.8.1           py3.8_cuda10.2_cudnn7.6.5_0
+- python                    3.8.16
+- torch-cluster             1.6.1+pt20cu117          
+- torch-geometric           2.3.0                    
+- torch-scatter             2.1.1+pt20cu117          
+- torch-sparse              0.6.17+pt20cu117          
+- torch-spline-conv         1.2.2+pt20cu117          
+- pytorch                   2.0.0
 - numpy                     1.21.2          
-- scipy                     1.6.3
+- scipy                     1.9.1
 - networkx                  2.5.1
 - tensorflow                2.2.0
 - networkx                  2.8
@@ -27,6 +28,7 @@
 - [Mol2vec](https://github.com/samoturk/mol2vec)
 - gensim                    4.1.2
 - biopython                 1.79
+- tqdm                      4.65.0
 
 ### File structure
 ```
