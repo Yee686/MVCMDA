@@ -97,13 +97,15 @@ class Model(nn.Module):
         YD_channel_attention = t.relu(YD_channel_attention)
 
 
-
+        print(XM_channel_attention.shape)
         x = self.cnn_x(XM_channel_attention)
+        print(x.shape)
         x = x.view(self.k, self.m).t()
 
 
-
+        print(YD_channel_attention.shape)
         y = self.cnn_y(YD_channel_attention)
+        print(x.shape)
         y = y.view(self.k, self.d).t()
 
 

@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 today = datetime.date.today().strftime("%Y%m%d")[2:]
 # Models = [Model_SAGE, Model_GCN, Model_GAT, Model_GIN, Model_ATTENGCN]
-Models = [Model_SAGE]
+Models = [Model_ATTENGCN]
 
 class Config(object):
     def __init__(self):
@@ -24,7 +24,7 @@ class Config(object):
 
         self.lr = 0.0001            # learning rate
         self.weight_decay = 0       # weight decay
-        self.epoch = 150            # epoch
+        self.epoch = 2            # epoch
         self.alpha = 0.2            # alpha for zero target in loss function
         self.beta = 0.5             # beta for one target in loss function
         self.loss = 'WMSE'          # loss function 'WMSE' or 'CONTRASTIVE'

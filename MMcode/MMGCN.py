@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-from torch_geometric.nn import GCNConv
+from torch_geometric.nn import GCNConv, SAGEConv
 torch.backends.cudnn.enabled = False
 
 class MMGCN(nn.Module):
@@ -10,14 +10,14 @@ class MMGCN(nn.Module):
         """
         super(MMGCN, self).__init__()
         self.args = args
-        # self.gcn_x1_f = GCNConv(self.args.fm, self.args.fm)
+        self.gcn_x1_f = GCNConv(self.args.fm, self.args.fm)
         self.gcn_x1_s = GCNConv(self.args.fm, self.args.fm)
-        # self.gcn_x2_f = GCNConv(self.args.fm, self.args.fm)
+        self.gcn_x2_f = GCNConv(self.args.fm, self.args.fm)
         self.gcn_x2_s = GCNConv(self.args.fm, self.args.fm)
 
-        # self.gcn_y1_f = GCNConv(self.args.fd, self.args.fd)
+        self.gcn_y1_f = GCNConv(self.args.fd, self.args.fd)
         self.gcn_y1_s = GCNConv(self.args.fd, self.args.fd)
-        # self.gcn_y2_f = GCNConv(self.args.fd, self.args.fd)
+        self.gcn_y2_f = GCNConv(self.args.fd, self.args.fd)
         self.gcn_y2_s = GCNConv(self.args.fd, self.args.fd)
 
         self.globalAvgPool_x = nn.AvgPool2d((self.args.fm, self.args.miRNA_number), (1, 1))
@@ -52,20 +52,20 @@ class MMGCN(nn.Module):
         x_d = torch.randn(self.args.disease_number, self.args.fd)
 
 
-        # x_m_f1 = torch.relu(self.gcn_x1_f(x_m.cuda(), data['mm_f']['edges'].cuda(), data['mm_f']['data_matrix'][data['mm_f']['edges'][0], data['mm_f']['edges'][1]].cuda()))
-        # x_m_f2 = torch.relu(self.gcn_x2_f(x_m_f1, data['mm_f']['edges'].cuda(), data['mm_f']['data_matrix'][data['mm_f']['edges'][0], data['mm_f']['edges'][1]].cuda()))
+        x_m_f1 = torch.relu(self.gcn_x1_f(x_m.cuda(), data['mm_f']['edges'].cuda(), data['mm_f']['data_matrix'][data['mm_f']['edges'][0], data['mm_f']['edges'][1]].cuda()))
+        x_m_f2 = torch.relu(self.gcn_x2_f(x_m_f1, data['mm_f']['edges'].cuda(), data['mm_f']['data_matrix'][data['mm_f']['edges'][0], data['mm_f']['edges'][1]].cuda()))
         # 节点特征 边 边特征
         x_m_s1 = torch.relu(self.gcn_x1_s(x_m.cuda(), data['mm_s']['edges'].cuda(), data['mm_s']['data_matrix'][data['mm_s']['edges'][0], data['mm_s']['edges'][1]].cuda()))
         x_m_s2 = torch.relu(self.gcn_x2_s(x_m_s1, data['mm_s']['edges'].cuda(), data['mm_s']['data_matrix'][data['mm_s']['edges'][0], data['mm_s']['edges'][1]].cuda()))
 
-        # y_d_f1 = torch.relu(self.gcn_y1_f(x_d.cuda(), data['dd_f']['edges'].cuda(), data['dd_f']['data_matrix'][data['dd_f']['edges'][0], data['dd_f']['edges'][1]].cuda()))
-        # y_d_f2 = torch.relu(self.gcn_y2_f(y_d_f1, data['dd_f']['edges'].cuda(), data['dd_f']['data_matrix'][data['dd_f']['edges'][0], data['dd_f']['edges'][1]].cuda()))
+        y_d_f1 = torch.relu(self.gcn_y1_f(x_d.cuda(), data['dd_f']['edges'].cuda(), data['dd_f']['data_matrix'][data['dd_f']['edges'][0], data['dd_f']['edges'][1]].cuda()))
+        y_d_f2 = torch.relu(self.gcn_y2_f(y_d_f1, data['dd_f']['edges'].cuda(), data['dd_f']['data_matrix'][data['dd_f']['edges'][0], data['dd_f']['edges'][1]].cuda()))
 
         y_d_s1 = torch.relu(self.gcn_y1_s(x_d.cuda(), data['dd_s']['edges'].cuda(), data['dd_s']['data_matrix'][data['dd_s']['edges'][0], data['dd_s']['edges'][1]].cuda()))
         y_d_s2 = torch.relu(self.gcn_y2_s(y_d_s1, data['dd_s']['edges'].cuda(), data['dd_s']['data_matrix'][data['dd_s']['edges'][0], data['dd_s']['edges'][1]].cuda()))
 
-        # XM = torch.cat((x_m_f1, x_m_f2, x_m_s1, x_m_s2), 1).t()
-        XM = torch.cat((x_m_s1, x_m_s2), 1).t()
+        XM = torch.cat((x_m_f1, x_m_f2, x_m_s1, x_m_s2), 1).t()
+        # XM = torch.cat((x_m_s1, x_m_s2), 1).t()
 
         XM = XM.view(1, self.args.view*self.args.gcn_layers, self.args.fm, -1)
 
@@ -80,8 +80,8 @@ class MMGCN(nn.Module):
 
         XM_channel_attention = torch.relu(XM_channel_attention)
 
-        # YD = torch.cat((y_d_f1, y_d_f2, y_d_s1, y_d_s2), 1).t()
-        YD = torch.cat(( y_d_s1, y_d_s2), 1).t()
+        YD = torch.cat((y_d_f1, y_d_f2, y_d_s1, y_d_s2), 1).t()
+        # YD = torch.cat(( y_d_s1, y_d_s2), 1).t()
 
         YD = YD.view(1, self.args.view*self.args.gcn_layers, self.args.fd, -1)
 
@@ -107,13 +107,3 @@ class MMGCN(nn.Module):
 
 
         return x.mm(y.t())
-
-
-
-
-
-
-
-
-
-

@@ -1,8 +1,10 @@
 from torch import nn, optim
-from model_SAGE import Model as Model_SAGE
-from model_gcn import Model as Model_GCN
-from model_gat import Model as Model_GAT
-from model_gin import Model as Model_GIN
+# from model_SAGE import Model as Model_SAGE
+# from model_gcn import Model as Model_GCN
+# from model_gat import Model as Model_GAT
+# from model_gin import Model as Model_GIN
+# from model_attengcn import Model as Model_ATTENGCN
+from model_attenGNN_multiview import MultiViewGNN as Model_MultiView
 from prepareData import prepare_data
 import numpy as np
 import torch
@@ -11,14 +13,12 @@ import matplotlib.pyplot as plt
 import datetime
 from tqdm import tqdm
 
-import autoPyTorch
-from autoPyTorch.metrics import roc_auc
-import ConfigSpace as CS
-print(autoPyTorch.__version__)
+import os
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:128"
 
 today = datetime.date.today().strftime("%Y%m%d")[2:]
 # Models = [Model_SAGE, Model_GCN, Model_GAT, Model_GIN, Model_ATTENGCN]
-Models = [Model_SAGE]
+Models = [Model_MultiView]
 
 class Config(object):
     def __init__(self):
@@ -26,9 +26,9 @@ class Config(object):
         self.validation = 10
         self.save_path = '/mnt/yzy/NIMCGCN/Prediction/Compare'
 
-        self.lr = 0.0001            # learning rate
+        self.lr = 0.001             # learning rate
         self.weight_decay = 0       # weight decay
-        self.epoch = 150            # epoch
+        self.epoch = 100            # epoch
         self.alpha = 0.2            # alpha for zero target in loss function
         self.beta = 0.5             # beta for one target in loss function
         self.loss = 'WMSE'          # loss function 'WMSE' or 'CONTRASTIVE'
@@ -42,11 +42,11 @@ class Sizes(object):
         # self.fg = 64                # x(miRNA) feature dimension
         # self.fd = 64                # y(Drug) feature dimension
         # self.k = 32                 # out feature channels
-        self.fg = 48                  # x(miRNA) feature dimension
-        self.fd = 48                  # y(Drug) feature dimension
-        self.k = 48                 # out feature channels
-        self.gcn_layers = 2         # gcn layers
-        self.view = 1               # view number
+        self.embedding_dim = 48     # feature dimension
+        self.hidden_channels = 48      # hidden feature channels
+        self.out_channels = 48         # out feature channels
+        self.gcn_layers = 2           # gcn layers
+        self.encoder_type = 'SAGE'    # view number
 
 
 class Myloss(nn.Module):
@@ -110,30 +110,15 @@ def train(model, train_data, optimizer, opt, train_one_index, train_zero_index):
     # return score
 
 
-dataset = torch.load("/mnt/yzy/NIMCGCN/new_dataset.pt")
+dataset = torch.load("/mnt/yzy/NIMCGCN/MultiView/multiview_dataset.pt")
 opt = Config()
 sizes = Sizes()
 
 if __name__ == "__main__":
-    torch.cuda.set_device(1)
+    torch.cuda.set_device(0)
 
     for Model in Models:
 
-        search_space = {
-            
-            'lr': autoPyTorch.components.Hyperparameter('log-uniform', (1e-5, 1e-1)),
-            'num_layers': autoPyTorch.components.Hyperparameter('int', (1, 5)),
-            'hidden_size': autoPyTorch.components.Hyperparameter('choice', (16, 32, 64)),
-        }
-
-        auto_config = {
-            maxruntime: 3600,
-
-        }
-
-        antonet = autoPyTorch.AutoNetClassification()
-
-        
         print(str(Model))
         torch.cuda.empty_cache()
 
@@ -155,14 +140,16 @@ if __name__ == "__main__":
             train_zero_index.cuda()
 
             t_dataset = {
-                    'md_true':dataset['md_true'],
-                    'mm':dataset['mm'],
-                    'dd':dataset['dd'],
+                    'md_true':dataset['md'],
+                    'mm_seq':dataset['mm_seq'],
+                    'mm_func':dataset['mm_func'],
+                    'dd_seq':dataset['dd_seq'],
+                    'dd_mol':dataset['dd_mol']
             }
 
             model = Model(sizes)
             model.cuda()
-
+            
             optimizer = optim.Adam(model.parameters(), lr=opt.lr,
                                 weight_decay=opt.weight_decay)
 
@@ -179,7 +166,7 @@ if __name__ == "__main__":
                 final_score[val_index] = score[val_index]
 
                 score = score[val_index].detach().cpu().numpy()
-                label = dataset['md_true'][val_index].detach().cpu().numpy()
+                label = dataset['md'][val_index].detach().cpu().numpy()
                 
                 score = score.reshape(-1).tolist()
                 label = label.reshape(-1).tolist()
@@ -190,15 +177,14 @@ if __name__ == "__main__":
         
         print("Avarage Auc:", sum(aucs)/opt.validation)
 
-        # with torch.no_grad():
-        #     # scores = scores.mean(axis=2)
-        #     final_score = final_score.detach().cpu().numpy()
-        #     final_target = dataset['md_true'].detach().cpu().numpy()
-        #     np.save("{0}/{1}_{2}FoldCV_{3}_[lr]{4}_[wd]{5}_[ep]{6}_[cvMthd]elem_[miRDim]{7}_[drugDim]{8}_[kFdim]{9}_[alpha]{10}_[loss]{11}.npy"
-        #             .format(opt.save_path, model.name, opt.validation, today, opt.lr, opt.weight_decay, 
-        #                     opt.epoch, sizes.fg, sizes.fd, sizes.k, opt.alpha, opt.loss), final_score)
-        #     score  = final_score.reshape(-1).tolist()
-        #     target = final_target.reshape(-1).tolist()
-        #     fpr, tpr, _ = metric.roc_curve(target,score)
-        #     auc = metric.auc(fpr, tpr)
-        #     print("Total Auc:", auc)
+        with torch.no_grad():
+            final_score = final_score.detach().cpu().numpy()
+            final_target = dataset['md'].detach().cpu().numpy()
+            np.save("{0}/{1}_{2}FoldCV_{3}_[lr]{4}_[wd]{5}_[ep]{6}_[cvMthd]elem_[miRDim]{7}_[drugDim]{8}_[kFdim]{9}_[alpha]{10}_[loss]{11}.npy"
+                    .format(opt.save_path, model.name, opt.validation, today, opt.lr, opt.weight_decay, 
+                            opt.epoch, sizes.embedding_dim,sizes.embedding_dim, sizes.out_channels, opt.alpha, opt.loss), final_score)
+            score  = final_score.reshape(-1).tolist()
+            target = final_target.reshape(-1).tolist()
+            fpr, tpr, _ = metric.roc_curve(target,score)
+            auc = metric.auc(fpr, tpr)
+            print("Total Auc:", auc)
