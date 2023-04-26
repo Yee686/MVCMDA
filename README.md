@@ -5,9 +5,9 @@
 ## Modified: 2023-04-22
 
 ### TODO
-[] multi-view
-[] neural architechure search
-[] constractive learning
+- [X] multi-view
+- [ ] neural architechure search
+- [ ] constractive learning
 
 ### Requirement
 
