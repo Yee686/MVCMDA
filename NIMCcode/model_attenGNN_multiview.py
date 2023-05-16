@@ -14,10 +14,15 @@ class LayerViewAttention(nn.Module):
 
     def forward(self,x):
         channel_att = self.globalAvgPool(x)
+        # print("glb:",channel_att.shape)
+
         channel_att = channel_att.view(channel_att.size(0),-1)
+        # print("view:",channel_att.shape)
+
         channel_att = torch.relu(self.fc1(channel_att))
         channel_att = torch.sigmoid(self.fc2(channel_att))
         channel_att = channel_att.view(channel_att.size(0),channel_att.size(1),1,1)
+        # print("sigmoid:",channel_att.shape)
         channel_att = torch.relu(channel_att)   # 求视图和层级注意力
         xx = torch.relu(x * channel_att)        # 对视图和层级加权
         return xx
@@ -65,7 +70,7 @@ class GCNEncoder(nn.Module):
         x1 = self.dropout1(x1)
         x2 = torch.relu(self.gcn2(x1,edge_index,edge_weight))
         x2 = self.dropout2(x2)
-        return torch.cat((x1,x2),dim=1)
+        return torch.cat((x1.unsqueeze(2), x2.unsqueeze(2)),dim=2)
 
 class SAGEEncoder(nn.Module):
     def __init__(self,embedding_dim,hidden_channels):
@@ -76,7 +81,7 @@ class SAGEEncoder(nn.Module):
     def forward(self,x,edge_index):
         x1 = torch.relu(self.sage1(x,edge_index))
         x2 = torch.relu(self.sage2(x1,edge_index))
-        return torch.cat((x1,x2),dim=1)
+        return torch.cat((x1.unsqueeze(2), x2.unsqueeze(2)),dim=2)
 
 class ChannelFusion(nn.Module):
     def __init__(self,embedding_dim,out_channels):
@@ -96,7 +101,9 @@ class ChannelFusion(nn.Module):
         )
 
     def forward(self,x):
+        # print(x.shape)
         x = self.cnn(x)
+        # print(x.shape)
         x = x.view(self.out_channels,-1).t()
         return x
 
@@ -124,11 +131,11 @@ class MultiViewGNN(nn.Module):
             self.drug_view1_encoder = SAGEEncoder(self.embedding_dim, self.hidden_channels)
             self.drug_view2_encoder = SAGEEncoder(self.embedding_dim, self.hidden_channels)
 
-        # self.mirna_attention = LayerViewAttention(self.embedding_dim, self.miRNA_number)
-        # self.drug_attention = LayerViewAttention(self.embedding_dim, self.drug_number)
+        self.mirna_attention = LayerViewAttention(self.embedding_dim, self.miRNA_number)
+        self.drug_attention = LayerViewAttention(self.embedding_dim, self.drug_number)
 
-        self.mirna_attention = MultiHeadAttention(self.embedding_dim, self.embedding_dim, 8)
-        self.drug_attention = MultiHeadAttention(self.embedding_dim, self.embedding_dim, 8)
+        # self.mirna_attention = MultiHeadAttention(self.embedding_dim, self.embedding_dim, 8)
+        # self.drug_attention = MultiHeadAttention(self.embedding_dim, self.embedding_dim, 8)
 
         self.mirna_fusion = ChannelFusion(self.embedding_dim, self.out_channels)
         self.drug_fusion = ChannelFusion(self.embedding_dim, self.out_channels)
@@ -165,10 +172,16 @@ class MultiViewGNN(nn.Module):
             drug_view1_embedding = self.drug_view1_encoder(drug_embedding,drug_view1_edge)
             drug_view2_embedding = self.drug_view2_encoder(drug_embedding,drug_view2_edge)
 
-        mirna_embedding = torch.cat((mirna_view1_embedding,mirna_view2_embedding),dim=1).view(1,4,self.embedding_dim,-1)
-        drug_embedding = torch.cat((drug_view1_embedding,drug_view2_embedding),dim=1).view(1,4,self.embedding_dim,-1)
+   
+        # mirna_embedding = torch.cat((mirna_view1_embedding,mirna_view2_embedding),dim=2).view(1,4,self.embedding_dim,-1)
+        mirna_embedding = torch.cat((mirna_view1_embedding,mirna_view2_embedding),dim=2).unsqueeze(0).transpose(1,3)
+        # print(mirna_embedding.shape)
+      
+        drug_embedding = torch.cat((drug_view1_embedding,drug_view2_embedding),dim=2).unsqueeze(0).transpose(1,3)
+        # print(drug_embedding.shape)
 
         mirna_embedding = self.mirna_attention(mirna_embedding)
+        
         drug_embedding = self.drug_attention(drug_embedding)
 
         mirna_embedding = self.mirna_fusion(mirna_embedding)

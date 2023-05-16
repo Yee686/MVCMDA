@@ -26,10 +26,11 @@ class Config(object):
         self.validation = 10
         self.save_path = '/mnt/yzy/NIMCGCN/Prediction/Compare'
 
+        # self.lr = 0.0005             # learning rate
         self.lr = 0.0005             # learning rate
-        self.weight_decay = 0.001   # weight decay
-        self.epoch = 250            # epoch
-        self.alpha = 0.1            # alpha for zero target in loss function
+        self.weight_decay = 0.0001   # weight decay
+        self.epoch = 100            # epoch
+        self.alpha = 0.2            # alpha for zero target in loss function
         self.beta = 0.5             # beta for one target in loss function
         self.loss = 'WMSE'          # loss function 'WMSE' or 'CONTRASTIVE'
         # self.loss = 'CONTRASTIVE'   # loss function
@@ -42,11 +43,13 @@ class Sizes(object):
         # self.fg = 64                # x(miRNA) feature dimension
         # self.fd = 64                # y(Drug) feature dimension
         # self.k = 32                 # out feature channels
-        self.embedding_dim = 64     # feature dimension
+        self.embedding_dim = 64      # feature dimension
         self.hidden_channels = 64      # hidden feature channels
         self.out_channels = 64         # out feature channels
         self.gcn_layers = 2           # gcn layers
-        self.encoder_type = 'SAGE'    # view number
+        # self.encoder_type = 'SAGE'    # view number
+        self.encoder_type = 'GCN'    # view number
+
 
 
 class Myloss(nn.Module):
@@ -110,12 +113,14 @@ def train(model, train_data, optimizer, opt, train_one_index, train_zero_index):
     # return score
 
 
-dataset = torch.load("/mnt/yzy/NIMCGCN/MultiView/multiview_dataset.pt")
+# dataset = torch.load("/mnt/yzy/NIMCGCN/MultiView/multiview_dataset.pt")
+dataset = torch.load("/mnt/yzy/NIMCGCN/MultiView/multiview_dataset_updatamd.pt")
+
 opt = Config()
 sizes = Sizes()
 
 if __name__ == "__main__":
-    torch.cuda.set_device(0)
+    torch.cuda.set_device(1)
 
     for Model in Models:
 
@@ -134,13 +139,16 @@ if __name__ == "__main__":
             val_one_index.cuda()
             val_zero_index.cuda()
 
-            train_one_index = torch.cat([dataset['fold_one_index'][j] for j in range(opt.validation) if j != i], dim=1)
-            train_zero_index = torch.cat([dataset['fold_zero_index'][j] for j in range(opt.validation) if j != i], dim=1)
+            # train_one_index = torch.cat([dataset['fold_one_index'][j] for j in range(opt.validation) if j != i], dim=1)
+            # train_zero_index = torch.cat([dataset['fold_zero_index'][j] for j in range(opt.validation) if j != i], dim=1)
+
+            train_one_index = torch.cat([dataset['fold_train_nozero_index'][j] for j in range(opt.validation) if j != i], dim=1)
+            train_zero_index = torch.cat([dataset['fold_train_zero_index'][j] for j in range(opt.validation) if j != i], dim=1)
             train_one_index.cuda()
             train_zero_index.cuda()
 
             t_dataset = {
-                    'md_true':dataset['md'],
+                    'md_true':dataset['md_updated'],
                     'mm_seq':dataset['mm_seq'],
                     'mm_func':dataset['mm_func'],
                     'dd_seq':dataset['dd_seq'],
