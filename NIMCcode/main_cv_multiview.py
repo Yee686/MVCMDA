@@ -5,6 +5,7 @@ from torch import nn, optim
 # from model_gin import Model as Model_GIN
 # from model_attengcn import Model as Model_ATTENGCN
 from model_attenGNN_multiview import MultiViewGNN as Model_MultiView
+from model_attenGNN_singleview import SingleViewGNN as Model_SingleView
 from prepareData import prepare_data
 import numpy as np
 import torch
@@ -24,12 +25,12 @@ class Config(object):
     def __init__(self):
         self.data_path = '/mnt/yzy/NIMCGCN/datasets/data(MDA108)'
         self.validation = 10
-        self.save_path = '/mnt/yzy/NIMCGCN/Prediction/Compare'
+        self.save_path = '/mnt/yzy/NIMCGCN/Prediction/CompareCV'
 
         # self.lr = 0.0005             # learning rate
         self.lr = 0.0005             # learning rate
         self.weight_decay = 0.0000   # weight decay
-        self.epoch = 150            # epoch
+        self.epoch = 100            # epoch
         self.alpha = 0.3            # alpha for zero target in loss function
         self.beta = 0.5             # beta for one target in loss function
         self.loss = 'WMSE'          # loss function 'WMSE' or 'CONTRASTIVE'
@@ -188,7 +189,7 @@ if __name__ == "__main__":
         with torch.no_grad():
             final_score = final_score.detach().cpu().numpy()
             final_target = dataset['md'].detach().cpu().numpy()
-            np.save("{0}/noAtt_{1}_{2}FoldCV_{3}_[lr]{4}_[wd]{5}_[ep]{6}_[cvMthd]elem_[miRDim]{7}_[drugDim]{8}_[kFdim]{9}_[alpha]{10}_[loss]{11}.npy"
+            np.save("{0}/{1}_{2}FoldCV_{3}_[lr]{4}_[wd]{5}_[ep]{6}_[cvMthd]elem_[miRDim]{7}_[drugDim]{8}_[kFdim]{9}_[alpha]{10}_[loss]{11}.npy"
                     .format(opt.save_path, model.name, opt.validation, today, opt.lr, opt.weight_decay, 
                             opt.epoch, sizes.embedding_dim,sizes.embedding_dim, sizes.out_channels, opt.alpha, opt.loss), final_score)
             score  = final_score.reshape(-1).tolist()

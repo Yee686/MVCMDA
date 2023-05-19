@@ -94,9 +94,10 @@ class ChannelFusion(nn.Module):
         #                      bias=True)
         self.cnn = nn.Conv2d(
             in_channels=4,
-            out_channels=1,
-            kernel_size=(1,1),
+            out_channels=64,
+            kernel_size=(embedding_dim,1),
             stride=1,
+            padding=0,
             bias=True
         )
 
@@ -131,8 +132,8 @@ class MultiViewGNN(nn.Module):
             self.drug_view1_encoder = SAGEEncoder(self.embedding_dim, self.hidden_channels)
             self.drug_view2_encoder = SAGEEncoder(self.embedding_dim, self.hidden_channels)
 
-        # self.mirna_attention = LayerViewAttention(self.embedding_dim, self.miRNA_number)
-        # self.drug_attention = LayerViewAttention(self.embedding_dim, self.drug_number)
+        self.mirna_attention = LayerViewAttention(self.embedding_dim, self.miRNA_number)
+        self.drug_attention = LayerViewAttention(self.embedding_dim, self.drug_number)
 
         # self.mirna_attention = MultiHeadAttention(self.embedding_dim, self.embedding_dim, 8)
         # self.drug_attention = MultiHeadAttention(self.embedding_dim, self.embedding_dim, 8)
@@ -180,12 +181,20 @@ class MultiViewGNN(nn.Module):
         drug_embedding = torch.cat((drug_view1_embedding,drug_view2_embedding),dim=2).unsqueeze(0).transpose(1,3)
         # print(drug_embedding.shape)
 
-        # mirna_embedding = self.mirna_attention(mirna_embedding)
+        mirna_embedding = self.mirna_attention(mirna_embedding)
         
-        # drug_embedding = self.drug_attention(drug_embedding)
+        drug_embedding = self.drug_attention(drug_embedding)
 
+        # mirna_embedding.transpose_(1,3)
+        # mirna_embedding.squeeze_(0)
+        # drug_embedding.squeeze_(0)
+
+        # print("mirna pre cnn ",mirna_embedding.shape)
         mirna_embedding = self.mirna_fusion(mirna_embedding)
-        drug_embedding = self.drug_fusion(drug_embedding)
+        # print("mirna after cnn ", mirna_embedding.shape)
 
+        # print("drug pre cnn ",drug_embedding.shape)
+        drug_embedding = self.drug_fusion(drug_embedding)
+        # print("drug after cnn ", drug_embedding.shape)
 
         return mirna_embedding@drug_embedding.t()

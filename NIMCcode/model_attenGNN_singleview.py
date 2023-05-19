@@ -101,9 +101,9 @@ class ChannelFusion(nn.Module):
         x = x.view(self.out_channels,-1).t()
         return x
 
-class MultiViewGNN(nn.Module):
+class SingleViewGNN(nn.Module):
     def __init__(self, args):
-        super(MultiViewGNN,self).__init__()
+        super(SingleViewGNN,self).__init__()
         self.view = 2
         self.gnn_layers = 2
         self.embedding_dim = args.embedding_dim
