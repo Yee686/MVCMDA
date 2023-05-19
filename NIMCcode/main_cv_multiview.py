@@ -33,8 +33,8 @@ class Config(object):
         self.epoch = 100            # epoch
         self.alpha = 0.3            # alpha for zero target in loss function
         self.beta = 0.5             # beta for one target in loss function
-        # self.loss = 'WMSE'          # loss function 'WMSE' or 'CONTRASTIVE'
-        self.loss = 'CONTRASTIVE'   # loss function
+        self.loss = 'WMSE'          # loss function 'WMSE' or 'CONTRASTIVE'
+        # self.loss = 'CONTRASTIVE'   # loss function
 
 
 class Sizes(object):
@@ -190,7 +190,7 @@ if __name__ == "__main__":
         with torch.no_grad():
             final_score = final_score.detach().cpu().numpy()
             final_target = dataset['md'].detach().cpu().numpy()
-            np.save("{0}/{1}_Ystar_{2}FoldCV_{3}_[lr]{4}_[wd]{5}_[ep]{6}_[cvMthd]elem_[miRDim]{7}_[drugDim]{8}_[kFdim]{9}_[alpha]{10}_[loss]{11}.npy"
+            np.save("{0}/{1}_noAtt_Ystar_{2}FoldCV_{3}_[lr]{4}_[wd]{5}_[ep]{6}_[cvMthd]elem_[miRDim]{7}_[drugDim]{8}_[kFdim]{9}_[alpha]{10}_[loss]{11}.npy"
                     .format(opt.save_path, model.name, opt.validation, today, opt.lr, opt.weight_decay, 
                             opt.epoch, sizes.embedding_dim,sizes.embedding_dim, sizes.out_channels, opt.alpha, opt.loss), final_score)
             score  = final_score.reshape(-1).tolist()

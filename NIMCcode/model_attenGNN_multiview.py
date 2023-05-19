@@ -190,11 +190,15 @@ class MultiViewGNN(nn.Module):
         # drug_embedding.squeeze_(0)
 
         # print("mirna pre cnn ",mirna_embedding.shape)
-        mirna_embedding = self.mirna_fusion(mirna_embedding)
+        # mirna_embedding = self.mirna_fusion(mirna_embedding)
         # print("mirna after cnn ", mirna_embedding.shape)
 
         # print("drug pre cnn ",drug_embedding.shape)
-        drug_embedding = self.drug_fusion(drug_embedding)
+        # drug_embedding = self.drug_fusion(drug_embedding)
         # print("drug after cnn ", drug_embedding.shape)
+
+        '''without cnn fusion'''
+        drug_embedding = drug_embedding.mean(dim=0).squeeze()
+        mirna_embedding = mirna_embedding.mean(dim=0).squeeze()
 
         return mirna_embedding@drug_embedding.t()
