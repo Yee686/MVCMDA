@@ -9,8 +9,8 @@ class LayerViewAttention(nn.Module):
         super(LayerViewAttention,self).__init__()
 
         self.globalAvgPool = nn.AvgPool2d((embedding_dim,node_number),(1,1))
-        self.fc1 = nn.Linear(4, 4)  #2层特征*2个视图
-        self.fc2 = nn.Linear(4, 4)
+        self.fc1 = nn.Linear(2, 2)  #2层特征*2个视图
+        self.fc2 = nn.Linear(2, 2)
 
     def forward(self,x):
         channel_att = self.globalAvgPool(x)
@@ -83,15 +83,11 @@ class ChannelFusion(nn.Module):
     def __init__(self,embedding_dim,out_channels):
         super(ChannelFusion,self).__init__()
         self.out_channels = out_channels
-        # self.cnn = nn.Conv1d(in_channels=4,
-        #                      out_channels=out_channels,
-        #                      kernel_size=(embedding_dim,1),
-        #                      stride=1,
-        #                      bias=True)
+
         self.cnn = nn.Conv2d(
             in_channels=2,
-            out_channels=1,
-            kernel_size=(1,1),
+            out_channels=self.out_channels,
+            kernel_size=(embedding_dim,1),
             stride=1,
             bias=True
         )
@@ -115,15 +111,11 @@ class SingleViewGNN(nn.Module):
         self.name = 'MultiView'+self.encoder_type
         
         if self.encoder_type == 'GCN':
-            self.mirna_view1_encoder = GCNEncoder(self.embedding_dim, self.hidden_channels)
-            self.mirna_view2_encoder = GCNEncoder(self.embedding_dim, self.hidden_channels)
-            self.drug_view1_encoder = GCNEncoder(self.embedding_dim, self.hidden_channels)
-            self.drug_view2_encoder = GCNEncoder(self.embedding_dim, self.hidden_channels)
+            self.mirna_view_encoder = GCNEncoder(self.embedding_dim, self.hidden_channels)
+            self.drug_view_encoder = GCNEncoder(self.embedding_dim, self.hidden_channels)
         elif self.encoder_type == 'SAGE':
-            self.mirna_view1_encoder = SAGEEncoder(self.embedding_dim, self.hidden_channels)
-            self.mirna_view2_encoder = SAGEEncoder(self.embedding_dim, self.hidden_channels)
-            self.drug_view1_encoder = SAGEEncoder(self.embedding_dim, self.hidden_channels)
-            self.drug_view2_encoder = SAGEEncoder(self.embedding_dim, self.hidden_channels)
+            self.mirna_view_encoder = SAGEEncoder(self.embedding_dim, self.hidden_channels)
+            self.drug_view_encoder = SAGEEncoder(self.embedding_dim, self.hidden_channels)
 
         self.mirna_attention = LayerViewAttention(self.embedding_dim, self.miRNA_number)
         self.drug_attention = LayerViewAttention(self.embedding_dim, self.drug_number)
@@ -140,34 +132,30 @@ class SingleViewGNN(nn.Module):
         mirna_embedding = torch.randn(self.miRNA_number, self.embedding_dim).cuda()
         drug_embedding = torch.randn(self.drug_number, self.embedding_dim).cuda()
 
-        mirna_view1_edge = data['mm_seq']['edge'].cuda()
-        mirna_view1_attr = data['mm_seq']['attr'][data['mm_seq']['edge'][0],data['mm_seq']['edge'][1]].cuda()
+        mirna_view_edge = data['mm']['edge'].cuda()
+        mirna_view_attr = data['mm']['attr'][data['mm']['edge'][0],data['mm']['edge'][1]].cuda()
 
-        mirna_view2_edge = data['mm_func']['edge'].cuda()
-        mirna_view2_attr = data['mm_func']['attr'][data['mm_func']['edge'][0],data['mm_func']['edge'][1]].cuda()       
+      
 
-        drug_view1_edge = data['dd_seq']['edge'].cuda()
-        drug_view1_attr = data['dd_seq']['attr'][data['dd_seq']['edge'][0],data['dd_seq']['edge'][1]].cuda()
+        drug_view_edge = data['dd']['edge'].cuda()
+        drug_view_attr = data['dd']['attr'][data['dd']['edge'][0],data['dd']['edge'][1]].cuda()
 
-        drug_view2_edge = data['dd_mol']['edge'].cuda()
-        drug_view2_attr = data['dd_mol']['attr'][data['dd_mol']['edge'][0],data['dd_mol']['edge'][1]].cuda()
         
         if self.encoder_type == 'GCN':
-            mirna_view1_embedding = self.mirna_view1_encoder(mirna_embedding,mirna_view1_edge,mirna_view1_attr)
-            drug_view1_embedding = self.drug_view1_encoder(drug_embedding,drug_view1_edge,drug_view1_attr)
+            mirna_view_embedding = self.mirna_view_encoder(mirna_embedding,mirna_view_edge,mirna_view_attr)
+            drug_view_embedding = self.drug_view_encoder(drug_embedding,drug_view_edge,drug_view_attr)
 
         elif self.encoder_type == 'SAGE':
-            mirna_view1_embedding = self.mirna_view1_encoder(mirna_embedding,mirna_view1_edge)
-            drug_view1_embedding = self.drug_view1_encoder(drug_embedding,drug_view1_edge)
+            mirna_view_embedding = self.mirna_view_encoder(mirna_embedding,mirna_view_edge)
+            drug_view_embedding = self.drug_view_encoder(drug_embedding,drug_view_edge)
    
-        mirna_embedding = torch.cat((mirna_view1_embedding,mirna_view2_embedding),dim=2).unsqueeze(0).transpose(1,3)
+        mirna_embedding = mirna_view_embedding.unsqueeze(0).transpose(1,3)
         # print(mirna_embedding.shape)
       
-        drug_embedding = torch.cat((drug_view1_embedding,drug_view2_embedding),dim=2).unsqueeze(0).transpose(1,3)
+        drug_embedding = drug_view_embedding.unsqueeze(0).transpose(1,3)
         # print(drug_embedding.shape)
 
         mirna_embedding = self.mirna_attention(mirna_embedding)
-        
         drug_embedding = self.drug_attention(drug_embedding)
 
         mirna_embedding = self.mirna_fusion(mirna_embedding)
