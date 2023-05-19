@@ -14,7 +14,7 @@ import datetime
 from tqdm import tqdm
 
 import os
-os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:128"
+# os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:128"
 
 today = datetime.date.today().strftime("%Y%m%d")[2:]
 # Models = [Model_SAGE, Model_GCN, Model_GAT, Model_GIN, Model_ATTENGCN]
@@ -28,9 +28,9 @@ class Config(object):
 
         # self.lr = 0.0005             # learning rate
         self.lr = 0.0005             # learning rate
-        self.weight_decay = 0.0001   # weight decay
-        self.epoch = 100            # epoch
-        self.alpha = 0.2            # alpha for zero target in loss function
+        self.weight_decay = 0.0000   # weight decay
+        self.epoch = 150            # epoch
+        self.alpha = 0.3            # alpha for zero target in loss function
         self.beta = 0.5             # beta for one target in loss function
         self.loss = 'WMSE'          # loss function 'WMSE' or 'CONTRASTIVE'
         # self.loss = 'CONTRASTIVE'   # loss function
@@ -47,8 +47,8 @@ class Sizes(object):
         self.hidden_channels = 64      # hidden feature channels
         self.out_channels = 64         # out feature channels
         self.gcn_layers = 2           # gcn layers
-        # self.encoder_type = 'SAGE'    # view number
-        self.encoder_type = 'GCN'    # view number
+        self.encoder_type = 'SAGE'    # view number
+        # self.encoder_type = 'GCN'    # view number
 
 
 
@@ -188,7 +188,7 @@ if __name__ == "__main__":
         with torch.no_grad():
             final_score = final_score.detach().cpu().numpy()
             final_target = dataset['md'].detach().cpu().numpy()
-            np.save("{0}/{1}_{2}FoldCV_{3}_[lr]{4}_[wd]{5}_[ep]{6}_[cvMthd]elem_[miRDim]{7}_[drugDim]{8}_[kFdim]{9}_[alpha]{10}_[loss]{11}.npy"
+            np.save("{0}/noAtt_{1}_{2}FoldCV_{3}_[lr]{4}_[wd]{5}_[ep]{6}_[cvMthd]elem_[miRDim]{7}_[drugDim]{8}_[kFdim]{9}_[alpha]{10}_[loss]{11}.npy"
                     .format(opt.save_path, model.name, opt.validation, today, opt.lr, opt.weight_decay, 
                             opt.epoch, sizes.embedding_dim,sizes.embedding_dim, sizes.out_channels, opt.alpha, opt.loss), final_score)
             score  = final_score.reshape(-1).tolist()

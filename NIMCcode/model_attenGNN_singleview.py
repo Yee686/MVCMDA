@@ -61,15 +61,11 @@ class GCNEncoder(nn.Module):
     def __init__(self,embedding_dim,hidden_channels):
         super(GCNEncoder,self).__init__()
         self.gcn1 = GCNConv(embedding_dim,hidden_channels)
-        # self.dropout1 = nn.Dropout(0.2)
         self.gcn2 = GCNConv(hidden_channels,hidden_channels)
-        # self.dropout2 = nn.Dropout(0.2)
 
     def forward(self,x,edge_index,edge_weight):
         x1 = torch.relu(self.gcn1(x,edge_index,edge_weight))
-        # x1 = self.dropout1(x1)
         x2 = torch.relu(self.gcn2(x1,edge_index,edge_weight))
-        # x2 = self.dropout2(x2)
         return torch.cat((x1.unsqueeze(2), x2.unsqueeze(2)),dim=2)
 
 class SAGEEncoder(nn.Module):
@@ -93,7 +89,7 @@ class ChannelFusion(nn.Module):
         #                      stride=1,
         #                      bias=True)
         self.cnn = nn.Conv2d(
-            in_channels=4,
+            in_channels=2,
             out_channels=1,
             kernel_size=(1,1),
             stride=1,
@@ -101,9 +97,7 @@ class ChannelFusion(nn.Module):
         )
 
     def forward(self,x):
-        # print(x.shape)
         x = self.cnn(x)
-        # print(x.shape)
         x = x.view(self.out_channels,-1).t()
         return x
 
@@ -131,8 +125,8 @@ class MultiViewGNN(nn.Module):
             self.drug_view1_encoder = SAGEEncoder(self.embedding_dim, self.hidden_channels)
             self.drug_view2_encoder = SAGEEncoder(self.embedding_dim, self.hidden_channels)
 
-        # self.mirna_attention = LayerViewAttention(self.embedding_dim, self.miRNA_number)
-        # self.drug_attention = LayerViewAttention(self.embedding_dim, self.drug_number)
+        self.mirna_attention = LayerViewAttention(self.embedding_dim, self.miRNA_number)
+        self.drug_attention = LayerViewAttention(self.embedding_dim, self.drug_number)
 
         # self.mirna_attention = MultiHeadAttention(self.embedding_dim, self.embedding_dim, 8)
         # self.drug_attention = MultiHeadAttention(self.embedding_dim, self.embedding_dim, 8)
@@ -160,29 +154,21 @@ class MultiViewGNN(nn.Module):
         
         if self.encoder_type == 'GCN':
             mirna_view1_embedding = self.mirna_view1_encoder(mirna_embedding,mirna_view1_edge,mirna_view1_attr)
-            mirna_view2_embedding = self.mirna_view2_encoder(mirna_embedding,mirna_view2_edge,mirna_view2_attr)
-
             drug_view1_embedding = self.drug_view1_encoder(drug_embedding,drug_view1_edge,drug_view1_attr)
-            drug_view2_embedding = self.drug_view2_encoder(drug_embedding,drug_view2_edge,drug_view2_attr)
 
         elif self.encoder_type == 'SAGE':
             mirna_view1_embedding = self.mirna_view1_encoder(mirna_embedding,mirna_view1_edge)
-            mirna_view2_embedding = self.mirna_view2_encoder(mirna_embedding,mirna_view2_edge)
-
             drug_view1_embedding = self.drug_view1_encoder(drug_embedding,drug_view1_edge)
-            drug_view2_embedding = self.drug_view2_encoder(drug_embedding,drug_view2_edge)
-
    
-        # mirna_embedding = torch.cat((mirna_view1_embedding,mirna_view2_embedding),dim=2).view(1,4,self.embedding_dim,-1)
         mirna_embedding = torch.cat((mirna_view1_embedding,mirna_view2_embedding),dim=2).unsqueeze(0).transpose(1,3)
         # print(mirna_embedding.shape)
       
         drug_embedding = torch.cat((drug_view1_embedding,drug_view2_embedding),dim=2).unsqueeze(0).transpose(1,3)
         # print(drug_embedding.shape)
 
-        # mirna_embedding = self.mirna_attention(mirna_embedding)
+        mirna_embedding = self.mirna_attention(mirna_embedding)
         
-        # drug_embedding = self.drug_attention(drug_embedding)
+        drug_embedding = self.drug_attention(drug_embedding)
 
         mirna_embedding = self.mirna_fusion(mirna_embedding)
         drug_embedding = self.drug_fusion(drug_embedding)

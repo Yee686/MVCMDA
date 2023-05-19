@@ -20,7 +20,6 @@
 - pytorch                   2.0.0
 - numpy                     1.21.2          
 - scipy                     1.9.1
-- networkx                  2.5.1
 - tensorflow                2.2.0
 - networkx                  2.8
 - rdkit                     2022.9.5
