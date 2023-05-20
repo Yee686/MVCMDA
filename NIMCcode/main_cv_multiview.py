@@ -5,8 +5,7 @@ from torch import nn, optim
 # from model_gin import Model as Model_GIN
 # from model_attengcn import Model as Model_ATTENGCN
 from model_attenGNN_multiview import MultiViewGNN as Model_MultiView
-from model_attenGNN_singleview import SingleViewGNN as Model_SingleView
-from prepareData import prepare_data
+# from model_attenGNN_singleview import SingleViewGNN as Model_SingleView
 import numpy as np
 import torch
 import sklearn.metrics as metric
@@ -25,7 +24,7 @@ class Config(object):
     def __init__(self):
         self.data_path = '/mnt/yzy/NIMCGCN/datasets/data(MDA108)'
         self.validation = 10
-        self.save_path = '/mnt/yzy/NIMCGCN/Prediction/Ablation'
+        self.save_path = '/mnt/yzy/NIMCGCN/Prediction/Param'
 
         # self.lr = 0.0005             # learning rate
         self.lr = 0.0005             # learning rate
@@ -34,6 +33,7 @@ class Config(object):
         self.alpha = 0.3            # alpha for zero target in loss function
         self.beta = 0.5             # beta for one target in loss function
         self.loss = 'WMSE'          # loss function 'WMSE' or 'CONTRASTIVE'
+        self.Y = 'Ystar'               # Ystar(updated md) or Y(md)
         # self.loss = 'CONTRASTIVE'   # loss function
 
 
@@ -46,10 +46,13 @@ class Sizes(object):
         # self.k = 32                 # out feature channels
         self.embedding_dim = 64      # feature dimension
         self.hidden_channels = 64      # hidden feature channels
-        self.out_channels = 64         # out feature channels
+        self.out_channels = 128         # out feature channels
         self.gcn_layers = 2           # gcn layers
         # self.encoder_type = 'SAGE'    # view number
         self.encoder_type = 'GCN'    # view number
+        self.attention_type = 'LayerView'    # attention type Multihead or LayerView
+        # self.attention_type = 'MultiHead'    # attention type MultiHead or LayerView
+        self.fusion_type = 'Fcn'         # confusion type cnn or mean
 
 
 
@@ -121,10 +124,12 @@ opt = Config()
 sizes = Sizes()
 
 if __name__ == "__main__":
-    torch.cuda.set_device(1)
+    torch.cuda.set_device(0)
 
     for Model in Models:
-
+        # for lr in [ 0.01, 0.005, 0.001, 0.0005, 0.0001]:
+            # for outchannel in [32, 64, 128, 256]
+            # opt.lr = lr
         print(str(Model), opt.loss, sizes.encoder_type)
         torch.cuda.empty_cache()
 
@@ -137,25 +142,35 @@ if __name__ == "__main__":
 
             val_one_index = dataset['fold_one_index'][i]
             val_zero_index = dataset['fold_zero_index'][i]
-            val_one_index.cuda()
-            val_zero_index.cuda()
+            # val_one_index.cuda()
+            # val_zero_index.cuda()
 
-            train_one_index = torch.cat([dataset['fold_one_index'][j] for j in range(opt.validation) if j != i], dim=1)
-            train_zero_index = torch.cat([dataset['fold_zero_index'][j] for j in range(opt.validation) if j != i], dim=1)
+            # train_one_index = torch.cat([dataset['fold_one_index'][j] for j in range(opt.validation) if j != i], dim=1)
+            # train_zero_index = torch.cat([dataset['fold_zero_index'][j] for j in range(opt.validation) if j != i], dim=1)
 
-            train_one_index = torch.cat([dataset['fold_train_nozero_index'][j] for j in range(opt.validation) if j != i], dim=1)
-            train_zero_index = torch.cat([dataset['fold_train_zero_index'][j] for j in range(opt.validation) if j != i], dim=1)
-            train_one_index.cuda()
-            train_zero_index.cuda()
-
+            # train_one_index = torch.cat([dataset['fold_train_nozero_index'][j] for j in range(opt.validation) if j != i], dim=1)
+            # train_zero_index = torch.cat([dataset['fold_train_zero_index'][j] for j in range(opt.validation) if j != i], dim=1)
+            
             t_dataset = {
-                    # 'md_true':dataset['md_updated'],
-                    'md_true':dataset['md'],
                     'mm_seq':dataset['mm_seq'],
                     'mm_func':dataset['mm_func'],
                     'dd_seq':dataset['dd_seq'],
                     'dd_mol':dataset['dd_mol']
             }
+
+            train_one_index, train_zero_index = None, None
+            if opt.Y == "Y":
+                t_dataset['md_true'] = dataset['md']
+                train_one_index = torch.cat([dataset['fold_one_index'][j] for j in range(opt.validation) if j != i], dim=1)
+                train_zero_index = torch.cat([dataset['fold_zero_index'][j] for j in range(opt.validation) if j != i], dim=1)
+
+            elif opt.Y == "Ystar":
+                t_dataset['md_true'] = dataset['md_updated']
+                train_one_index = torch.cat([dataset['fold_train_nozero_index'][j] for j in range(opt.validation) if j != i], dim=1)
+                train_zero_index = torch.cat([dataset['fold_train_zero_index'][j] for j in range(opt.validation) if j != i], dim=1)
+
+            train_one_index.cuda()
+            train_zero_index.cuda()
 
             model = Model(sizes)
             model.cuda()
@@ -169,6 +184,7 @@ if __name__ == "__main__":
 
                 model.eval()
                 score = model(t_dataset)
+                score.cpu()
 
                 val_index = torch.cat((val_one_index,val_zero_index),dim=1)
                 val_index = val_index[0], val_index[1]
@@ -190,9 +206,10 @@ if __name__ == "__main__":
         with torch.no_grad():
             final_score = final_score.detach().cpu().numpy()
             final_target = dataset['md'].detach().cpu().numpy()
-            np.save("{0}/{1}_noAtt_Ystar_{2}FoldCV_{3}_[lr]{4}_[wd]{5}_[ep]{6}_[cvMthd]elem_[miRDim]{7}_[drugDim]{8}_[kFdim]{9}_[alpha]{10}_[loss]{11}.npy"
+            np.save("{0}/{1}_Ystar_{12}_{2}FoldCV_{3}_[lr]{4}_[wd]{5}_[ep]{6}_[cvMthd]elem_[miRDim]{7}_[drugDim]{8}_[kFdim]{9}_[alpha]{10}_[loss]{11}.npy"
                     .format(opt.save_path, model.name, opt.validation, today, opt.lr, opt.weight_decay, 
-                            opt.epoch, sizes.embedding_dim,sizes.embedding_dim, sizes.out_channels, opt.alpha, opt.loss), final_score)
+                            opt.epoch, sizes.embedding_dim,sizes.embedding_dim, sizes.out_channels, opt.alpha, opt.loss,
+                            opt.Y+"_"+sizes.attention_type), final_score)
             score  = final_score.reshape(-1).tolist()
             target = final_target.reshape(-1).tolist()
             fpr, tpr, _ = metric.roc_curve(target,score)

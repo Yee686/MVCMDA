@@ -129,9 +129,13 @@ if __name__ == "__main__":
 
         print(str(Model), opt.loss, sizes.encoder_type)
         torch.cuda.empty_cache()
-
+        count = 0
         for mirna_view in miRNA_views:
             for drug_view in drug_views:
+                count += 1
+                if count <= 2:
+                    continue
+
                 print(mirna_view, drug_view)                
                 aucs = []
                 final_score = torch.empty((sizes.m, sizes.d)).cuda()
