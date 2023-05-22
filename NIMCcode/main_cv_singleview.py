@@ -122,94 +122,94 @@ sizes = Sizes()
 if __name__ == "__main__":
     torch.cuda.set_device(1)
 
-    miRNA_views = ["mm_seq", "mm_func"]
-    drug_views = ["dd_seq", "dd_mol"]
+    # miRNA_views = ["mm_seq", "mm_func"]
+    # drug_views = ["dd_seq", "dd_mol"]
 
     for Model in Models:
 
         print(str(Model), opt.loss, sizes.encoder_type)
         torch.cuda.empty_cache()
         count = 0
-        for mirna_view in miRNA_views:
-            for drug_view in drug_views:
-                count += 1
-                if count <= 2:
-                    continue
+        # for mirna_view in miRNA_views:
+        #     for drug_view in drug_views:
+        # count += 1
+        # if count <= 2:
+        #     continue
 
-                print(mirna_view, drug_view)                
-                aucs = []
-                final_score = torch.empty((sizes.m, sizes.d)).cuda()
+        # print(mirna_view, drug_view)                
+        aucs = []
+        final_score = torch.empty((sizes.m, sizes.d)).cuda()
 
-                for i in range(opt.validation):
-                    
-                    torch.cuda.empty_cache()
+        for i in range(opt.validation):
+            
+            torch.cuda.empty_cache()
 
-                    val_one_index = dataset['fold_one_index'][i]
-                    val_zero_index = dataset['fold_zero_index'][i]
-                    val_one_index.cuda()
-                    val_zero_index.cuda()
+            val_one_index = dataset['fold_one_index'][i]
+            val_zero_index = dataset['fold_zero_index'][i]
+            val_one_index.cuda()
+            val_zero_index.cuda()
 
-                    train_one_index = torch.cat([dataset['fold_one_index'][j] for j in range(opt.validation) if j != i], dim=1)
-                    train_zero_index = torch.cat([dataset['fold_zero_index'][j] for j in range(opt.validation) if j != i], dim=1)
+            train_one_index = torch.cat([dataset['fold_one_index'][j] for j in range(opt.validation) if j != i], dim=1)
+            train_zero_index = torch.cat([dataset['fold_zero_index'][j] for j in range(opt.validation) if j != i], dim=1)
 
-                    train_one_index = torch.cat([dataset['fold_train_nozero_index'][j] for j in range(opt.validation) if j != i], dim=1)
-                    train_zero_index = torch.cat([dataset['fold_train_zero_index'][j] for j in range(opt.validation) if j != i], dim=1)
-                    train_one_index.cuda()
-                    train_zero_index.cuda()
+            train_one_index = torch.cat([dataset['fold_train_nozero_index'][j] for j in range(opt.validation) if j != i], dim=1)
+            train_zero_index = torch.cat([dataset['fold_train_zero_index'][j] for j in range(opt.validation) if j != i], dim=1)
+            train_one_index.cuda()
+            train_zero_index.cuda()
 
-                    t_dataset = {
-                            # 'md_true':dataset['md_updated'],
-                            'md_true':dataset['md'],
-                            # 'mm_seq':dataset['mm_seq'],
-                            # 'mm_func':dataset['mm_func'],
-                            # 'dd_seq':dataset['dd_seq'],
-                            # 'dd_mol':dataset['dd_mol']
-                            'mm':dataset[mirna_view],
-                            'dd':dataset[drug_view]
-                    }
+            t_dataset = {
+                    # 'md_true':dataset['md_updated'],
+                    'md_true':dataset['md'],
+                    # 'mm_seq':dataset['mm_seq'],
+                    # 'mm_func':dataset['mm_func'],
+                    # 'dd_seq':dataset['dd_seq'],
+                    # 'dd_mol':dataset['dd_mol']
+                    'mm':dataset[mirna_view],
+                    'dd':dataset[drug_view]
+            }
 
-                    model = Model(sizes)
-                    model.cuda()
-                    
-                    optimizer = optim.Adam(model.parameters(), lr=opt.lr,
-                                        weight_decay=opt.weight_decay)
+            model = Model(sizes)
+            model.cuda()
+            
+            optimizer = optim.Adam(model.parameters(), lr=opt.lr,
+                                weight_decay=opt.weight_decay)
 
-                    train(model, t_dataset, optimizer, opt, train_one_index, train_zero_index)
-                    
-                    with torch.no_grad():
+            train(model, t_dataset, optimizer, opt, train_one_index, train_zero_index)
+            
+            with torch.no_grad():
 
-                        model.eval()
-                        score = model(t_dataset)
+                model.eval()
+                score = model(t_dataset)
 
-                        val_index = torch.cat((val_one_index,val_zero_index),dim=1)
-                        val_index = val_index[0], val_index[1]
+                val_index = torch.cat((val_one_index,val_zero_index),dim=1)
+                val_index = val_index[0], val_index[1]
 
-                        final_score[val_index] = score[val_index]
+                final_score[val_index] = score[val_index]
 
-                        score = score[val_index].detach().cpu().numpy()
-                        label = dataset['md'][val_index].detach().cpu().numpy()
-                        
-                        score = score.reshape(-1).tolist()
-                        label = label.reshape(-1).tolist()
-                        fpr, tpr, _ = metric.roc_curve(label,score)
-                        auc = metric.auc(fpr, tpr)
-                        aucs.append(auc)
-                        print("auc {} - {}".format(i+1, auc))
+                score = score[val_index].detach().cpu().numpy()
+                label = dataset['md'][val_index].detach().cpu().numpy()
                 
-                print("Avarage Auc:", sum(aucs)/opt.validation)
+                score = score.reshape(-1).tolist()
+                label = label.reshape(-1).tolist()
+                fpr, tpr, _ = metric.roc_curve(label,score)
+                auc = metric.auc(fpr, tpr)
+                aucs.append(auc)
+                print("auc {} - {}".format(i+1, auc))
+        
+        print("Avarage Auc:", sum(aucs)/opt.validation)
 
-                with torch.no_grad():
-                    final_score = final_score.detach().cpu().numpy()
-                    final_target = dataset['md'].detach().cpu().numpy()
-                    # np.save("{0}/{1}_Ystar_{2}FoldCV_{3}_[lr]{4}_[wd]{5}_[ep]{6}_[cvMthd]elem_[miRDim]{7}_[drugDim]{8}_[kFdim]{9}_[alpha]{10}_[loss]{11}.npy"
-                    #         .format(opt.save_path, model.name, opt.validation, today, opt.lr, opt.weight_decay, 
-                    #                 opt.epoch, sizes.embedding_dim,sizes.embedding_dim, sizes.out_channels, opt.alpha, opt.loss), final_score)
-                    np.save("{0}/{1}_Ystar_{12}_{2}FoldCV_{3}_[lr]{4}_[wd]{5}_[ep]{6}_[cvMthd]elem_[miRDim]{7}_[drugDim]{8}_[kFdim]{9}_[alpha]{10}_[loss]{11}.npy"
-                            .format(opt.save_path, model.name, opt.validation, today, opt.lr, opt.weight_decay, 
-                                    opt.epoch, sizes.embedding_dim,sizes.embedding_dim, sizes.out_channels,
-                                      opt.alpha, opt.loss, mirna_view+"_"+drug_view), final_score)
-                    score  = final_score.reshape(-1).tolist()
-                    target = final_target.reshape(-1).tolist()
-                    fpr, tpr, _ = metric.roc_curve(target,score)
-                    auc = metric.auc(fpr, tpr)
-                    print("Total Auc:", auc)
+        with torch.no_grad():
+            final_score = final_score.detach().cpu().numpy()
+            final_target = dataset['md'].detach().cpu().numpy()
+            # np.save("{0}/{1}_Ystar_{2}FoldCV_{3}_[lr]{4}_[wd]{5}_[ep]{6}_[cvMthd]elem_[miRDim]{7}_[drugDim]{8}_[kFdim]{9}_[alpha]{10}_[loss]{11}.npy"
+            #         .format(opt.save_path, model.name, opt.validation, today, opt.lr, opt.weight_decay, 
+            #                 opt.epoch, sizes.embedding_dim,sizes.embedding_dim, sizes.out_channels, opt.alpha, opt.loss), final_score)
+            np.save("{0}/{1}_Ystar_{12}_{2}FoldCV_{3}_[lr]{4}_[wd]{5}_[ep]{6}_[cvMthd]elem_[miRDim]{7}_[drugDim]{8}_[kFdim]{9}_[alpha]{10}_[loss]{11}.npy"
+                    .format(opt.save_path, model.name, opt.validation, today, opt.lr, opt.weight_decay, 
+                            opt.epoch, sizes.embedding_dim,sizes.embedding_dim, sizes.out_channels,
+                                opt.alpha, opt.loss, mirna_view+"_"+drug_view), final_score)
+            score  = final_score.reshape(-1).tolist()
+            target = final_target.reshape(-1).tolist()
+            fpr, tpr, _ = metric.roc_curve(target,score)
+            auc = metric.auc(fpr, tpr)
+            print("Total Auc:", auc)

@@ -24,7 +24,7 @@ class Config(object):
     def __init__(self):
         self.data_path = '/mnt/yzy/NIMCGCN/datasets/data(MDA108)'
         self.validation = 10
-        self.save_path = '/mnt/yzy/NIMCGCN/Prediction/Param'
+        self.save_path = '/mnt/yzy/NIMCGCN/Prediction/Ablation'
 
         # self.lr = 0.0005             # learning rate
         self.lr = 0.0005             # learning rate
@@ -41,15 +41,13 @@ class Sizes(object):
     def __init__(self): 
         self.m = 1043               # miRNA number
         self.d = 2166               # drug number
-        # self.fg = 64                # x(miRNA) feature dimension
-        # self.fd = 64                # y(Drug) feature dimension
-        # self.k = 32                 # out feature channels
         self.embedding_dim = 64      # feature dimension
         self.hidden_channels = 64      # hidden feature channels
         self.out_channels = 128         # out feature channels
-        self.gcn_layers = 2           # gcn layers
-        # self.encoder_type = 'SAGE'    # view number
-        self.encoder_type = 'GCN'    # view number
+        # self.layers = 2                 # encoder layers
+        # self.views = 2                  # view number
+        # self.encoder_type = 'SAGE'    # encoder type
+        self.encoder_type = 'GCN'    # encoder type
         self.attention_type = 'LayerView'    # attention type Multihead or LayerView
         # self.attention_type = 'MultiHead'    # attention type MultiHead or LayerView
         self.fusion_type = 'Fcn'         # confusion type cnn or mean
@@ -124,17 +122,19 @@ opt = Config()
 sizes = Sizes()
 
 if __name__ == "__main__":
-    torch.cuda.set_device(0)
+    torch.cuda.set_device(1)
 
     for Model in Models:
-        # for lr in [ 0.01, 0.005, 0.001, 0.0005, 0.0001]:
-            # for outchannel in [32, 64, 128, 256]
-            # opt.lr = lr
-        print(str(Model), opt.loss, sizes.encoder_type)
+        # for channel in [ 0.01, 0.005, 0.001, 0.0005, 0.0001]:
+        # for alpha in [0.1, 0.2, 0.3, 0.4, 0.5]:
+            # opt.alpha = alpha
+            # print(str(Model), opt.loss, sizes.encoder_type)
+        print(str(Model), opt.alpha, opt.loss, sizes.encoder_type, sizes.attention_type, sizes.fusion_type)
         torch.cuda.empty_cache()
 
         final_score = torch.empty((sizes.m, sizes.d)).cuda()
         aucs = []
+
 
         for i in range(opt.validation):
             
@@ -206,7 +206,7 @@ if __name__ == "__main__":
         with torch.no_grad():
             final_score = final_score.detach().cpu().numpy()
             final_target = dataset['md'].detach().cpu().numpy()
-            np.save("{0}/{1}_Ystar_{12}_{2}FoldCV_{3}_[lr]{4}_[wd]{5}_[ep]{6}_[cvMthd]elem_[miRDim]{7}_[drugDim]{8}_[kFdim]{9}_[alpha]{10}_[loss]{11}.npy"
+            np.save("{0}/{1}_Ystar_{12}_wo_dd_seq_{2}FoldCV_{3}_[lr]{4}_[wd]{5}_[ep]{6}_[cvMthd]elem_[miRDim]{7}_[drugDim]{8}_[kFdim]{9}_[alpha]{10}_[loss]{11}.npy"
                     .format(opt.save_path, model.name, opt.validation, today, opt.lr, opt.weight_decay, 
                             opt.epoch, sizes.embedding_dim,sizes.embedding_dim, sizes.out_channels, opt.alpha, opt.loss,
                             opt.Y+"_"+sizes.attention_type), final_score)
