@@ -1,13 +1,12 @@
-# ```DELMDA``` Deep Graph Embedding Learning For MiRNA-Drug Association Prediction
-# ```DELMDA``` 基于图深度学习的MiRNA-Drug关联预测研究
+# MVCMDA
 ## Author: Yi ZhengYe
 ## Data: 2023-03 ~ 2023-05
-## Modified: 2023-04-22
+## Modified: 2023-05-21
 
 ### TODO
 - [X] multi-view
 - [ ] neural architechure search
-- [ ] constractive learning
+- [X] constractive learning
 
 ### Requirement
 
@@ -57,12 +56,3 @@
 - GPU: Nvidia GTX1080ti * 2
 - CPU: Intel(R) Xeon(R) Gold 6146 CPU @ 3.20GHz
 - RAM: 128G
-
-### Experiment Result
-
-| Model | AUC | AUPR |
-| :---: | :---: | :---: |
-| GraphSAGE + WMSE | 0.8015299048068565 | 0.027891972920350793 |
-| GraphSAGE + CONSTRACTIVE | 0.7976784627831176 | 0.027981549010521998 |
-| GraphSAGE + CONSTRACTIVE | 0.7942976959763675 | 0.02794336895198995 |
-| NMF + KNN | 0.9951840037388745 | 0.884318792489077 |
