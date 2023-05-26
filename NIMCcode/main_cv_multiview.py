@@ -24,7 +24,7 @@ class Config(object):
     def __init__(self):
         self.data_path = '/mnt/yzy/NIMCGCN/datasets/data(MDA108)'
         self.validation = 10
-        self.save_path = '/mnt/yzy/NIMCGCN/Prediction/Ablation'
+        self.save_path = '/mnt/yzy/NIMCGCN/Prediction/'
 
         # self.lr = 0.0005             # learning rate
         self.lr = 0.0005             # learning rate
@@ -116,7 +116,7 @@ def train(model, train_data, optimizer, opt, train_one_index, train_zero_index):
 
 
 # dataset = torch.load("/mnt/yzy/NIMCGCN/MultiView/multiview_dataset.pt")
-dataset = torch.load("/mnt/yzy/NIMCGCN/MultiView/multiview_dataset_updatamd.pt")
+dataset = torch.load("/root/MVCMDA/datasets/multiview_dataset_updatamd.pt")
 
 opt = Config()
 sizes = Sizes()
