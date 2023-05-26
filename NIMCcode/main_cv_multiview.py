@@ -11,6 +11,7 @@ import torch
 import sklearn.metrics as metric
 import matplotlib.pyplot as plt
 import datetime
+import time
 from tqdm import tqdm
 
 import os
@@ -24,13 +25,13 @@ class Config(object):
     def __init__(self):
         self.data_path = '/mnt/yzy/NIMCGCN/datasets/data(MDA108)'
         self.validation = 10
-        self.save_path = '/mnt/yzy/NIMCGCN/Prediction/'
+        self.save_path = '/root/MVCMDA/Predicition'
 
         # self.lr = 0.0005             # learning rate
         self.lr = 0.0005             # learning rate
         self.weight_decay = 0.0000   # weight decay
-        self.epoch = 100            # epoch
-        self.alpha = 0.3            # alpha for zero target in loss function
+        self.epoch = 150            # epoch
+        self.alpha = 0.1            # alpha for zero target in loss function
         self.beta = 0.5             # beta for one target in loss function
         self.loss = 'WMSE'          # loss function 'WMSE' or 'CONTRASTIVE'
         self.Y = 'Ystar'               # Ystar(updated md) or Y(md)
@@ -122,7 +123,9 @@ opt = Config()
 sizes = Sizes()
 
 if __name__ == "__main__":
-    torch.cuda.set_device(1)
+
+    start_time = time.time()
+    torch.cuda.set_device(0)
 
     for Model in Models:
         # for channel in [ 0.01, 0.005, 0.001, 0.0005, 0.0001]:
@@ -215,3 +218,6 @@ if __name__ == "__main__":
             fpr, tpr, _ = metric.roc_curve(target,score)
             auc = metric.auc(fpr, tpr)
             print("Total Auc:", auc)
+
+    end_time = time.time()
+    print("Total running time:", end_time-start_time)
