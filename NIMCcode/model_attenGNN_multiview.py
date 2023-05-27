@@ -169,7 +169,7 @@ class MultiViewGNN(nn.Module):
 
         if self.attention_type == 'LayerView':
             self.mirna_attention = LayerViewAttention(self.embedding_dim, self.miRNA_number,4)
-            self.drug_attention = LayerViewAttention(self.embedding_dim, self.drug_number,2)
+            self.drug_attention = LayerViewAttention(self.embedding_dim, self.drug_number,4)
 
         elif self.attention_type == 'MultiHead':
             self.mirna_attention = MultiHeadAttention(self.embedding_dim, self.embedding_dim, 2)
@@ -187,7 +187,7 @@ class MultiViewGNN(nn.Module):
         elif self.fusion_type == 'Fcn':
             self.mirna_fusion = nn.Sequential(nn.Linear(self.embedding_dim*4, self.embedding_dim*2),nn.ReLU(),
                                                 nn.Linear(self.embedding_dim*2, self.embedding_dim),nn.ReLU())
-            self.drug_fusion = nn.Sequential(nn.Linear(self.embedding_dim*2, self.embedding_dim*2),nn.ReLU(),
+            self.drug_fusion = nn.Sequential(nn.Linear(self.embedding_dim*4, self.embedding_dim*2),nn.ReLU(),
                                                 nn.Linear(self.embedding_dim*2, self.embedding_dim),nn.ReLU())
 
     
@@ -250,8 +250,8 @@ class MultiViewGNN(nn.Module):
         # print(mirna_embedding.shape)
       
         
-        # drug_embedding = torch.cat((drug_view1_embedding,drug_view2_embedding),dim=2).unsqueeze(0).transpose(1,3)
-        drug_embedding = drug_view2_embedding.unsqueeze(0).transpose(1,3)
+        drug_embedding = torch.cat((drug_view1_embedding,drug_view2_embedding),dim=2).unsqueeze(0).transpose(1,3)
+        # drug_embedding = drug_view2_embedding.unsqueeze(0).transpose(1,3)
 
         # print(drug_embedding.shape)
 
